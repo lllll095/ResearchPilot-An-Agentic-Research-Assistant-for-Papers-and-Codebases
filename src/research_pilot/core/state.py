@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 
 from research_pilot.core.action import AgentAction
 from research_pilot.core.observation import Observation
+from research_pilot.core.todo import TodoList
 
 
 class AgentStep(BaseModel):
@@ -18,6 +19,8 @@ class AgentState(BaseModel):
     user_goal: str
     steps: list[AgentStep] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    todo_list: TodoList = Field(default_factory=TodoList)
+    todo_reminder: str | None = None
     final_answer: str | None = None
 
     def add_step(self, step: AgentStep) -> None:

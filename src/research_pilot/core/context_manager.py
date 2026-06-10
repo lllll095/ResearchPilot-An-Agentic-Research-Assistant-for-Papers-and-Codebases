@@ -8,11 +8,12 @@ from research_pilot.core.tool_runtime import ToolRuntime
 class ContextManager:
     """Build compact context for the Agent.
 
-    Phase 2 context includes:
+    Phase 2.5 context includes:
     - user goal
     - available tool specs
+    - current todo list
+    - todo reminder
     - recent steps
-    - JSON action requirements
 
     To avoid prompt pollution, long observations are truncated.
     """
@@ -23,6 +24,7 @@ class ContextManager:
     def build_context(self, state: AgentState, tool_runtime: ToolRuntime) -> str:
         recent_steps = state.steps[-5:]
         tool_specs = [spec.model_dump() for spec in tool_runtime.tool_specs()]
+        todo_reminder = state.todo_reminder or "No todo reminder."
 
         step_text = "\n".join(
             f"Step {step.step_id}:\n"
@@ -33,6 +35,12 @@ class ContextManager:
 
         return f"""User goal:
 {state.user_goal}
+
+Current todo list:
+{state.todo_list.render()}
+
+Todo reminder:
+{todo_reminder}
 
 Available tools:
 {json.dumps(tool_specs, indent=2, ensure_ascii=False)}

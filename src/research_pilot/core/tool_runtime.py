@@ -1,3 +1,5 @@
+from typing import Any
+
 from research_pilot.core.action import AgentAction
 from research_pilot.core.observation import Observation
 from research_pilot.core.permission import PermissionChecker
@@ -18,11 +20,11 @@ class ToolRuntime:
 
     def list_tools(self) -> list[str]:
         return list(self.tools.keys())
-    
+
     def tool_specs(self) -> list[ToolSpec]:
         return [tool.spec() for tool in self.tools.values()]
 
-    def execute(self, action: AgentAction) -> Observation:
+    def execute(self, action: AgentAction, state: Any | None = None) -> Observation:
         if action.tool_name is None:
             return Observation(
                 success=False,
@@ -40,4 +42,4 @@ class ToolRuntime:
                 metadata={"available_tools": self.list_tools()},
             )
 
-        return tool.run(action.tool_input)
+        return tool.run(action.tool_input, state=state)

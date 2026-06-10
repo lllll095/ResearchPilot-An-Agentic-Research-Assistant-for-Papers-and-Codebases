@@ -21,7 +21,7 @@ class ListFilesTool(BaseTool):
             },
         )
 
-    def run(self, tool_input: dict) -> Observation:
+    def run(self, tool_input: dict, state=None) -> Observation:
         path = tool_input.get("path", ".")
         permission = self.permission_checker.check_file_path(path)
 
@@ -79,7 +79,7 @@ class ReadFileTool(BaseTool):
             },
         )
 
-    def run(self, tool_input: dict) -> Observation:
+    def run(self, tool_input: dict, state=None) -> Observation:
         path = tool_input.get("path")
 
         if not path:

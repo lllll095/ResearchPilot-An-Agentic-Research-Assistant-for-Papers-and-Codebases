@@ -28,6 +28,6 @@ class BaseTool(ABC):
         )
 
     @abstractmethod
-    def run(self, tool_input: dict[str, Any]) -> Observation:
+    def run(self, tool_input: dict[str, Any], state: Any | None = None) -> Observation:
         """Execute the tool and return an observation."""
         raise NotImplementedError

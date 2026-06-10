@@ -23,7 +23,7 @@ class SaveNoteTool(BaseTool):
             },
         )
 
-    def run(self, tool_input: dict) -> Observation:
+    def run(self, tool_input: dict, state=None) -> Observation:
         title = tool_input.get("title", "untitled_note")
         content = tool_input.get("content", "")
 
@@ -36,6 +36,9 @@ class SaveNoteTool(BaseTool):
         path = self.note_dir / f"{timestamp}_{safe_title}.md"
 
         path.write_text(content, encoding="utf-8")
+
+        if state is not None:
+            state.add_note(str(path))
 
         return Observation(
             success=True,

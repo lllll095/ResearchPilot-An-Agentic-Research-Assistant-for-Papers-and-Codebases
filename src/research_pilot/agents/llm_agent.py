@@ -21,6 +21,8 @@ class LLMAgentPolicy:
         "read_file",
         "save_note",
         "shell",
+        "todo_write",
+        "todo_read",
     }
 
     def __init__(self, llm_client: OpenAICompatibleLLMClient):
@@ -92,16 +94,21 @@ You can return one of two action types.
   "thought_summary": "The task is complete."
 }
 
-Important rules:
-- The value of action_type must be exactly "tool_call" or "final_answer".
-- Never use a tool name such as "save_note" as action_type.
-- If you want to save a note, use action_type="tool_call" and tool_name="save_note".
+Todo rules:
+- For any multi-step task, first create a todo list using todo_write.
+- Keep the todo list short and concrete.
+- Use todo_write to update statuses when a major step starts or finishes.
+- Use status values exactly: pending, in_progress, completed, cancelled.
+- Before final_answer, make sure all relevant todo items are completed or cancelled.
+- If the current todo list is empty and the task has multiple requirements, call todo_write first.
+
+Tool rules:
 - Use only tools listed in the context.
 - Prefer list_files and read_file before using shell.
 - Use shell only when necessary.
-- If the user asks you to save a note, you must call save_note before final_answer.
+- If the user asks you to save a note, call save_note before final_answer.
 - If the user asks you to inspect a project, list files first.
-- Do not return final_answer until all explicitly requested actions are completed.
+- Do not return final_answer until the user's explicitly requested actions are completed.
 - If a previous tool failed, choose another safe action or return final_answer.
 """
 

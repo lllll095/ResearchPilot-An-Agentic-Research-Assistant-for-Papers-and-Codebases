@@ -25,7 +25,7 @@ class ShellTool(BaseTool):
             },
         )
 
-    def run(self, tool_input: dict) -> Observation:
+    def run(self, tool_input: dict, state=None) -> Observation:
         command = tool_input.get("command")
 
         if not command:

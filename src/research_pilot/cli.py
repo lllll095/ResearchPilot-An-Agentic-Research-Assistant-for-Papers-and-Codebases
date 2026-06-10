@@ -7,12 +7,14 @@ from research_pilot.agents.mock_agent import MockAgentPolicy
 from research_pilot.config import settings
 from research_pilot.core.agent_loop import AgentLoop, AgentPolicy
 from research_pilot.core.context_manager import ContextManager
+from research_pilot.core.hooks import HookManager
 from research_pilot.core.permission import PermissionChecker
 from research_pilot.core.tool_runtime import ToolRuntime
 from research_pilot.core.trace import TraceStore
 from research_pilot.tools.file_tools import ListFilesTool, ReadFileTool
 from research_pilot.tools.note_tool import SaveNoteTool
 from research_pilot.tools.shell_tool import ShellTool
+from research_pilot.tools.todo_tool import TodoReadTool, TodoWriteTool
 
 app = typer.Typer(help="ResearchPilot command line interface.")
 console = Console()
@@ -47,9 +49,12 @@ def build_runtime(policy_name: str = "mock") -> AgentLoop:
     tool_runtime.register(ReadFileTool(permission_checker))
     tool_runtime.register(SaveNoteTool(workspace / "notes"))
     tool_runtime.register(ShellTool(permission_checker))
+    tool_runtime.register(TodoWriteTool())
+    tool_runtime.register(TodoReadTool())
 
     context_manager = ContextManager()
     trace_store = TraceStore(workspace / "traces")
+    hook_manager = HookManager()
     policy = build_policy(policy_name)
 
     return AgentLoop(
@@ -57,7 +62,8 @@ def build_runtime(policy_name: str = "mock") -> AgentLoop:
         tool_runtime=tool_runtime,
         context_manager=context_manager,
         trace_store=trace_store,
-        max_steps=8,
+        hook_manager=hook_manager,
+        max_steps=12,
     )
 
 
