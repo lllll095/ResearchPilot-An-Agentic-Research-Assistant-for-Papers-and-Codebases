@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 from research_pilot.core.observation import Observation
-from research_pilot.core.tool import BaseTool
+from research_pilot.core.tool import BaseTool, ToolSpec
 
 
 class SaveNoteTool(BaseTool):
@@ -12,6 +12,16 @@ class SaveNoteTool(BaseTool):
     def __init__(self, note_dir: Path):
         self.note_dir = note_dir
         self.note_dir.mkdir(parents=True, exist_ok=True)
+
+    def spec(self) -> ToolSpec:
+        return ToolSpec(
+            name=self.name,
+            description=self.description,
+            input_schema={
+                "title": "Short title for the note. Use letters, numbers, hyphen, or underscore.",
+                "content": "Markdown content of the note.",
+            },
+        )
 
     def run(self, tool_input: dict) -> Observation:
         title = tool_input.get("title", "untitled_note")

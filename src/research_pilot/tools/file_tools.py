@@ -2,15 +2,24 @@ from pathlib import Path
 
 from research_pilot.core.observation import Observation
 from research_pilot.core.permission import PermissionChecker
-from research_pilot.core.tool import BaseTool
+from research_pilot.core.tool import BaseTool, ToolSpec
 
 
 class ListFilesTool(BaseTool):
     name = "list_files"
-    description = "List files under a directory."
+    description = "List files and folders under a directory."
 
     def __init__(self, permission_checker: PermissionChecker):
         self.permission_checker = permission_checker
+
+    def spec(self) -> ToolSpec:
+        return ToolSpec(
+            name=self.name,
+            description=self.description,
+            input_schema={
+                "path": "Directory path to list. Use '.' for the current project root."
+            },
+        )
 
     def run(self, tool_input: dict) -> Observation:
         path = tool_input.get("path", ".")
@@ -55,11 +64,20 @@ class ListFilesTool(BaseTool):
 
 class ReadFileTool(BaseTool):
     name = "read_file"
-    description = "Read a text file."
+    description = "Read a UTF-8 text file."
 
     def __init__(self, permission_checker: PermissionChecker, max_chars: int = 4000):
         self.permission_checker = permission_checker
         self.max_chars = max_chars
+
+    def spec(self) -> ToolSpec:
+        return ToolSpec(
+            name=self.name,
+            description=self.description,
+            input_schema={
+                "path": "Path of the UTF-8 text file to read, such as README.md."
+            },
+        )
 
     def run(self, tool_input: dict) -> Observation:
         path = tool_input.get("path")

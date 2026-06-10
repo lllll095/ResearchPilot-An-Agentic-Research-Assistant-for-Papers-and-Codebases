@@ -2,7 +2,7 @@ import subprocess
 
 from research_pilot.core.observation import Observation
 from research_pilot.core.permission import PermissionChecker
-from research_pilot.core.tool import BaseTool
+from research_pilot.core.tool import BaseTool, ToolSpec
 
 
 class ShellTool(BaseTool):
@@ -12,6 +12,18 @@ class ShellTool(BaseTool):
     def __init__(self, permission_checker: PermissionChecker, timeout: int = 10):
         self.permission_checker = permission_checker
         self.timeout = timeout
+
+    def spec(self) -> ToolSpec:
+        return ToolSpec(
+            name=self.name,
+            description=(
+                "Run a safe shell command. Prefer file tools when possible. "
+                "Do not use this for destructive commands."
+            ),
+            input_schema={
+                "command": "Shell command to run, such as 'python --version' or 'pytest'."
+            },
+        )
 
     def run(self, tool_input: dict) -> Observation:
         command = tool_input.get("command")

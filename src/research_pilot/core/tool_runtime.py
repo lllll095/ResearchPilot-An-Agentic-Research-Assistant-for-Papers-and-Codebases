@@ -1,7 +1,7 @@
 from research_pilot.core.action import AgentAction
 from research_pilot.core.observation import Observation
 from research_pilot.core.permission import PermissionChecker
-from research_pilot.core.tool import BaseTool
+from research_pilot.core.tool import BaseTool, ToolSpec
 
 
 class ToolRuntime:
@@ -18,6 +18,9 @@ class ToolRuntime:
 
     def list_tools(self) -> list[str]:
         return list(self.tools.keys())
+    
+    def tool_specs(self) -> list[ToolSpec]:
+        return [tool.spec() for tool in self.tools.values()]
 
     def execute(self, action: AgentAction) -> Observation:
         if action.tool_name is None:
