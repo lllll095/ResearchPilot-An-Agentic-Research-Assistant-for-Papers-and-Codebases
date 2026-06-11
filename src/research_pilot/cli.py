@@ -29,6 +29,7 @@ from research_pilot.tools.engineered_rag_tool import (
 )
 from research_pilot.tools.evidence_answer_tool import WriteEvidenceAnswerTool
 from research_pilot.workflows.paper_workflows import PaperWorkflowRunner
+from research_pilot.workflows.intent_router import IntentRouter, IntentType
 
 
 app = typer.Typer(help="ResearchPilot command line interface.")
@@ -280,6 +281,64 @@ def paper_research(
     )
 
     console.rule("[bold green]Paper Research Result")
+    console.print(result.final_answer)
+
+@app.command("ask")
+def ask(
+    user_input: str,
+    force_download: bool = typer.Option(
+        False,
+        "--force-download",
+        help="Force downloading new papers before answering.",
+    ),
+    save_report: bool = typer.Option(
+        False,
+        "--save-report",
+        help="Save the final answer as a report.",
+    ),
+):
+    """Ask ResearchPilot a natural language question.
+
+    This command routes the request to a stable workflow when possible.
+    """
+
+    router = IntentRouter()
+    routed = router.route(user_input)
+
+    console.print(f"[cyan]Routed intent:[/cyan] {routed.intent_type}")
+    console.print(f"[dim]Reason: {routed.reason}[/dim]")
+
+    runner = build_paper_workflow_runner()
+
+    if routed.intent_type == IntentType.PAPER_ANSWER:
+        result = runner.paper_answer(
+            question=user_input,
+            save_report=save_report,
+        )
+
+    elif routed.intent_type == IntentType.PAPER_COLLECT:
+        result = runner.paper_collect(
+            topic=user_input,
+            max_papers=routed.max_papers,
+            rebuild_index=True,
+        )
+
+    elif routed.intent_type == IntentType.PAPER_RESEARCH:
+        result = runner.paper_research(
+            question=user_input,
+            max_papers=routed.max_papers,
+            force_download=force_download or routed.force_download,
+            save_report=save_report or routed.save_report,
+        )
+
+    else:
+        console.print(
+            "[yellow]Falling back to general Agent run. "
+            "For now, use `research-pilot run --policy llm ...` for open-ended tasks.[/yellow]"
+        )
+        return
+
+    console.rule("[bold green]ResearchPilot Answer")
     console.print(result.final_answer)
 
 if __name__ == "__main__":
