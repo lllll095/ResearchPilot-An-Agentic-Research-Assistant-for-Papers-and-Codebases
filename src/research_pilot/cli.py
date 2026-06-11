@@ -15,6 +15,11 @@ from research_pilot.tools.file_tools import ListFilesTool, ReadFileTool
 from research_pilot.tools.note_tool import SaveNoteTool
 from research_pilot.tools.shell_tool import ShellTool
 from research_pilot.tools.todo_tool import TodoReadTool, TodoWriteTool
+from research_pilot.agents.research_planner_agent import ResearchPlannerAgent
+from research_pilot.core.llm_client import OpenAICompatibleLLMClient
+from research_pilot.core.state import AgentState
+from research_pilot.tools.report_tool import SaveReportTool
+from research_pilot.tools.web_search_tool import MockWebSearchTool
 
 app = typer.Typer(help="ResearchPilot command line interface.")
 console = Console()
@@ -51,6 +56,8 @@ def build_runtime(policy_name: str = "mock") -> AgentLoop:
     tool_runtime.register(ShellTool(permission_checker))
     tool_runtime.register(TodoWriteTool())
     tool_runtime.register(TodoReadTool())
+    tool_runtime.register(MockWebSearchTool())
+    tool_runtime.register(SaveReportTool(workspace / "reports"))
 
     context_manager = ContextManager()
     trace_store = TraceStore(workspace / "traces")
@@ -99,6 +106,43 @@ def tools():
         console.print(f"  {spec.description}")
         console.print(f"  input_schema: {spec.input_schema}")
 
+@app.command()
+def research(topic: str):
+    """Run a minimal deep research workflow."""
+
+    llm_client = OpenAICompatibleLLMClient.from_settings()
+    planner = ResearchPlannerAgent(llm_client=llm_client)
+
+    plan = planner.plan(topic)
+    todo_list = planner.to_todo_list(plan)
+
+    console.rule("[bold blue]Research Plan")
+    console.print(f"[bold]Topic:[/bold] {plan.topic}")
+
+    for task in plan.tasks:
+        console.print(f"- [bold]{task.id}. {task.title}[/bold]")
+        console.print(f"  query: {task.query}")
+
+    research_goal = f"""Deep research task:
+{topic}
+
+The ResearchPlannerAgent has already decomposed the topic into subtasks and initialized the todo list.
+
+Use web_search to collect evidence for the research subtasks.
+Use save_note to save useful intermediate findings.
+Use save_report to save the final research report before final_answer.
+"""
+
+    state = AgentState(
+        user_goal=research_goal,
+        todo_list=todo_list,
+    )
+
+    loop = build_runtime(policy_name="llm")
+    result = loop.run_state(state)
+
+    console.rule("[bold green]Final Answer")
+    console.print(result.final_answer)
 
 if __name__ == "__main__":
     app()

@@ -23,6 +23,8 @@ class LLMAgentPolicy:
         "shell",
         "todo_write",
         "todo_read",
+        "web_search",
+        "save_report",
     }
 
     def __init__(self, llm_client: OpenAICompatibleLLMClient):
@@ -95,16 +97,23 @@ You can return one of two action types.
 }
 
 Todo rules:
-- For any multi-step task, first create a todo list using todo_write.
+- For a multi-step task, call todo_write once at the beginning to create a short plan.
 - Keep the todo list short and concrete.
-- Use todo_write to update statuses when a major step starts or finishes.
-- Use status values exactly: pending, in_progress, completed, cancelled.
-- Before final_answer, make sure all relevant todo items are completed or cancelled.
-- If the current todo list is empty and the task has multiple requirements, call todo_write first.
+- After creating a todo list, execute the next concrete tool such as list_files, read_file, web_search, save_note, or save_report.
+- Do not call todo_write twice in a row unless correcting an invalid todo list.
+- Update todo status only after completing a meaningful external action.
+- Before final_answer, make sure the todo list reflects the actual completed work.
+
+Research rules:
+- For research tasks, use web_search to collect evidence.
+- Save useful intermediate findings with save_note.
+- If the user asks for a report or research summary, call save_report before final_answer.
+- A good research flow is: todo_write -> web_search -> save_note -> save_report -> final_answer.
+- Do not claim that a report was saved unless save_report succeeded.
 
 Tool rules:
 - Use only tools listed in the context.
-- Prefer list_files and read_file before using shell.
+- Prefer list_files and read_file before using shell for code or file inspection tasks.
 - Use shell only when necessary.
 - If the user asks you to save a note, call save_note before final_answer.
 - If the user asks you to inspect a project, list files first.

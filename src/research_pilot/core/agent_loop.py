@@ -43,6 +43,10 @@ class AgentLoop:
 
     def run(self, user_goal: str) -> AgentState:
         state = AgentState(user_goal=user_goal)
+        return self.run_state(state)
+
+
+    def run_state(self, state: AgentState) -> AgentState:
         run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         self.console.rule("[bold blue]Agent Loop Started")
