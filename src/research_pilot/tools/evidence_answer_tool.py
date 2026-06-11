@@ -22,6 +22,17 @@ class WriteEvidenceAnswerTool(BaseTool):
                 "max_chars_per_item": "Optional max characters per evidence item. Default is 3500.",
             },
         )
+    
+    def _collect_evidence_blocks(self, state) -> list[dict]:
+        blocks = []
+
+        for item in state.evidence_store.items:
+            item_blocks = item.metadata.get("evidence_blocks")
+
+            if isinstance(item_blocks, list):
+                blocks.extend(item_blocks)
+
+        return blocks
 
     def run(self, tool_input: dict, state=None) -> Observation:
         if state is None:
@@ -48,9 +59,12 @@ class WriteEvidenceAnswerTool(BaseTool):
         writer = EvidenceAnswerWriterAgent(llm_client=self.llm_client)
 
         try:
+            evidence_blocks = self._collect_evidence_blocks(state)
+
             answer = writer.write_answer(
                 question=question,
                 evidence_store=state.evidence_store,
+                evidence_blocks=evidence_blocks,
                 max_evidence_items=max_evidence_items,
                 max_chars_per_item=max_chars_per_item,
             )

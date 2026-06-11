@@ -38,6 +38,10 @@ class LLMAgentPolicy:
         self.llm_client = llm_client
 
     def next_action(self, state: AgentState, context: str) -> AgentAction:
+        passthrough_action = self._passthrough_last_evidence_answer(state)
+        if passthrough_action is not None:
+            return passthrough_action
+
         messages = [
             {
                 "role": "system",
@@ -149,6 +153,7 @@ Evidence answer rules:
 - summarize_evidence is for intermediate task summaries; write_evidence_answer is for final citation-aware answers.
 - After write_evidence_answer succeeds, do not rewrite the answer from scratch. Use it as the final answer or save it.
 - Do not call read_file on source filenames returned by engineered_rag_search.
+- After write_evidence_answer succeeds, return its full output as final_answer. Do not summarize, shorten, or rewrite it.
 
 Tool rules:
 - Use only tools listed in the context.
@@ -355,3 +360,34 @@ Tool rules:
             lines.append("")
 
         return "\n".join(lines)
+    
+    def _passthrough_last_evidence_answer(self, state) -> AgentAction | None:
+        """If write_evidence_answer just succeeded, return it directly.
+
+        This avoids compressing a citation-aware answer into a weaker final answer.
+        """
+
+        if not state.steps:
+            return None
+
+        last_step = state.steps[-1]
+
+        if last_step.action.tool_name != "write_evidence_answer":
+            return None
+
+        if last_step.observation is None or not last_step.observation.success:
+            return None
+
+        answer = last_step.observation.content
+
+        if not answer:
+            return None
+
+        return AgentAction(
+            action_type=ActionType.FINAL_ANSWER,
+            final_answer=answer,
+            thought_summary=(
+                "The citation-aware answer has already been generated, "
+                "so I should return it directly."
+            ),
+        )

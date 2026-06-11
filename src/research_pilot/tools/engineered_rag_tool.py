@@ -317,6 +317,23 @@ class EngineeredRAGSearchTool(BaseTool):
                 f"Candidate papers:\n"
             )
 
+            evidence_blocks = []
+
+            for i, doc in enumerate(docs, start=1):
+                evidence_blocks.append(
+                    {
+                        "source_id": i,
+                        "file": doc.metadata.get("source", "unknown"),
+                        "page": doc.metadata.get("page", "unknown"),
+                        "chunk_id": doc.metadata.get("chunk_id", "unknown"),
+                        "chunk_type": doc.metadata.get("chunk_type", "unknown"),
+                        "vector_score": doc.metadata.get("vector_score", "unknown"),
+                        "bm25_score": doc.metadata.get("bm25_score", "unknown"),
+                        "reranker_score": doc.metadata.get("reranker_score", "unknown"),
+                        "content": doc.page_content,
+                    }
+                )
+
             for item in retrieval_info.get("candidate_papers", []):
                 content += (
                     f"- {item.get('title')} | "
@@ -332,6 +349,7 @@ class EngineeredRAGSearchTool(BaseTool):
                 "backend": "paper-rag-assistant EngineeredRAG",
                 "retrieval_info": retrieval_info,
                 "num_docs": len(docs),
+                "evidence_blocks": evidence_blocks,
                 "sources": [
                     {
                         "source": doc.metadata.get("source"),
