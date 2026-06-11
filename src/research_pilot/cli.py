@@ -27,6 +27,7 @@ from research_pilot.tools.engineered_rag_tool import (
     EngineeredRAGIndexTool,
     EngineeredRAGSearchTool,
 )
+from research_pilot.tools.evidence_answer_tool import WriteEvidenceAnswerTool
 
 app = typer.Typer(help="ResearchPilot command line interface.")
 console = Console()
@@ -68,11 +69,12 @@ def build_runtime(policy_name: str = "mock") -> AgentLoop:
     else:
         tool_runtime.register(MockWebSearchTool())
     tool_runtime.register(SaveReportTool(workspace / "reports"))
-    summarizer_llm_client = None
+    tool_llm_client = None
     if policy_name.lower().strip() == "llm":
-        summarizer_llm_client = OpenAICompatibleLLMClient.from_settings()
+        tool_llm_client = OpenAICompatibleLLMClient.from_settings()
 
-    tool_runtime.register(SummarizeEvidenceTool(llm_client=summarizer_llm_client))
+    tool_runtime.register(SummarizeEvidenceTool(llm_client=tool_llm_client))
+    tool_runtime.register(WriteEvidenceAnswerTool(llm_client=tool_llm_client))
     tool_runtime.register(ArxivPaperSearchTool())
     tool_runtime.register(ArxivPaperDownloadTool(workspace / "documents" / "papers"))
 

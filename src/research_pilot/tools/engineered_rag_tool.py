@@ -313,6 +313,7 @@ class EngineeredRAGSearchTool(BaseTool):
                 "- The retrieved context below is already extracted text from indexed PDFs.\n"
                 "- Do not call read_file on the returned source filenames.\n"
                 "- If more evidence is needed, call engineered_rag_search again with a refined query.\n\n"
+                "- For final question answering, call write_evidence_answer using this retrieved evidence.\n\n"
                 f"Candidate papers:\n"
             )
 

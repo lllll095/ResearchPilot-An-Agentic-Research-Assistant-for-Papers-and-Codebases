@@ -31,6 +31,7 @@ class LLMAgentPolicy:
         "engineered_rag_index",
         "engineered_rag_search",
         "engineered_rag_answer",
+        "write_evidence_answer",
     }
 
     def __init__(self, llm_client: OpenAICompatibleLLMClient):
@@ -141,6 +142,13 @@ Engineered RAG rules:
 - If more evidence is needed, call engineered_rag_search again with a refined query.
 - If engineered_rag_search fails because indexes are missing, call engineered_rag_index first.
 - Do not call engineered_rag_index repeatedly unless new papers were downloaded or the user asks to rebuild the index.
+
+Evidence answer rules:
+- If the user asks to answer a question using retrieved evidence, call write_evidence_answer after retrieval.
+- If engineered_rag_search succeeded, prefer write_evidence_answer over summarize_evidence for direct question answering.
+- summarize_evidence is for intermediate task summaries; write_evidence_answer is for final citation-aware answers.
+- After write_evidence_answer succeeds, do not rewrite the answer from scratch. Use it as the final answer or save it.
+- Do not call read_file on source filenames returned by engineered_rag_search.
 
 Tool rules:
 - Use only tools listed in the context.
