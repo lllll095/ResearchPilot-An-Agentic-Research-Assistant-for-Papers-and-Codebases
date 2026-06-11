@@ -1,0 +1,228 @@
+{
+  "success": true,
+  "content": "EngineeredRAG retrieved evidence chunks.\n\nQuery: What is the architecture of agentic RAG?\nRetrieval mode: global\n\nImportant downstream instruction:\n- The retrieved context below is already extracted text from indexed PDFs.\n- Do not call read_file on the returned source filenames.\n- If more evidence is needed, call engineered_rag_search again with a refined query.\n- For final question answering, call write_evidence_answer using this retrieved evidence.\n\nCandidate papers:\n- 01 2510.22344v1 | source=01_2510.22344v1.pdf | score=0.5456293821334839\n- 01 2605.05287v1 | source=01_2605.05287v1.pdf | score=0.5474084615707397\n- 01 2510.25518v1 | source=01_2510.25518v1.pdf | score=0.580412745475769\n- 03 2412.12881v1 | source=03_2412.12881v1.pdf | score=0.6251848936080933\n\nRetrieved context:\n\n[Source 1]\nFile: 01_2510.25518v1.pdf\nPage: 2\nChunk ID: 390\nChunk Type: main\nVector Score: 0.3768274784088135\nBM25 Score: 14.953856362194019\nReranker Score: 5.943637371063232\n\nContent:\narchitecture.\nA. Baseline RAG System\nThe Baseline RAG system, which will be referred to as\n\"B-RAG\" for the remainder of this work, represents a stan-\ndard retrieval pipeline that serves as a comparison point for\nour agentic architecture. This approach follows a sequential\nprocess, as illustrated in Figure 2.\nThe B-RAG system, illustrated in Figure 2, consists of a\nsequence of specialized agents structured to enable stepwise\ninformation retrieval and synthesis. The process begins with\nthe user’s initial input, which serves as the contextual founda-\ntion for subsequent components. This input is then propagated\nthrough the following agents:\n(a)Query Reformulator Agent: Takes the user’s question\nand refines it into a concise, keyword-focused query\noptimized for retrieval. It uses predefined prompt tem-\nplates to detect if the query is a continuation of previous\ninteractions or a standalone new topic.\n(b)Retriever Agent: Executes a single-pass retrieval from the\n\n\n\n[Source 2]\nFile: 01_2510.25518v1.pdf\nPage: 1\nChunk ID: 385\nChunk Type: main\nVector Score: 0.3769589066505432\nBM25 Score: 14.50293956142773\nReranker Score: 5.5098676681518555\n\nContent:\ntion II reviews relevant work in RAG, multi-agent pipelines,\nand domain-specific retrieval systems. Section III describes\nour methodology, including the design of the baseline and\nagentic RAG architectures. Section IV details the knowledge\nbase preparation and the construction of the evaluation dataset.\nSection V presents the experimental setup and results, compar-\ning retrieval accuracy and latency across configurations. Sec-\ntion VI provides a qualitative error analysis and discussion of\nobserved performance patterns. Finally, Section VII concludes\nthe paper and outlines directions for future work.\nII. RELATEDWORK\nAgentic RAG:Recent work has increasingly explored en-\nhancing Retrieval-Augmented Generation (RAG) systems with\nstructured, multi-agent architectures for complex information\ntasks. Agentic RAG integrates autonomous AI agents into the\npipeline, enabling dynamic query decomposition and iterative\nreasoning. Singhet al.introduce the concept of Agentic RAG,\n\n\n\n[Source 3]\nFile: 01_2605.05287v1.pdf\nPage: 1\nChunk ID: 434\nChunk Type: main\nVector Score: 0.4681120812892914\nBM25 Score: 16.267414365337558\nReranker Score: 5.0382537841796875\n\nContent:\nmay accumulate context that crosses security boundaries.\nThis paper focuses on agentic RAG—the intersection of\nretrieval-augmented generation and autonomous tool use—as\nthe primary case study, since retrieval is where the relevance-\nauthorization gap is most acute. However, the layered iso-\nlation architecture and server-side enforcement patterns we\npropose are general and extend to other agentic capabili-\nties including inference, tool execution, code generation, and\nmulti-step workflows.\n1.3 Contributions\nThis paper makes the following contributions:\n(1) We formalize therelevance-authorization gapin mul-\ntitenant RAG, showing why relevance ranking alone\nis insufficient to enforce isolation without explicit au-\nthorization predicates [12, 14], and provide empirical\nevidence that ungated retrieval leaks cross-tenant data\nin 98–100% of probes.\n(2) We propose a layered isolation architecture combin-\ning policy-aware ingestion, retrieval-time gating, and\n\n\n\n[Source 4]\nFile: 01_2510.25518v1.pdf\nPage: 0\nChunk ID: 375\nChunk Type: main\nVector Score: 0.5211706161499023\nBM25 Score: 12.801170521040303\nReranker Score: 4.930066108703613\n\nContent:\nRetrieval Augmented Generation (RAG) for\nFintech: Agentic Design and Evaluation\n1,3Thomas Cook ∗, 2,3Richard Osuagwu ∗, 1,3Liman Tsatiashvili ∗, 4,3Vrynsia Vrynsia ∗,\n3Koustav Ghosal, 3Maraim Masoud, 3Riccardo Mattivi\n1TU Dublin, Dublin, Ireland\n2Maynooth University, Ireland\n3Mastercard, Ireland\n4National College of Ireland, Ireland\n{firstname.lastname}@mastercard.com\nAbstract—Retrieval-Augmented Generation (RAG) systems of-\nten face limitations in specialized domains such as fintech, where\ndomain-specific ontologies, dense terminology, and acronyms\ncomplicate effective retrieval and synthesis. This paper introduces\nan agentic RAG architecture designed to address these challenges\nthrough a modular pipeline of specialised agents. The proposed\nsystem supports intelligent query reformulation, iterative sub-\nquery decomposition guided by keyphrase extraction, contextual\nacronym resolution, and cross-encoder-based context re-ranking.\nWe evaluate our approach against a standard RAG baseline\n\n\n\n[Source 5]\nFile: 01_2510.22344v1.pdf\nPage: 18\nChunk ID: 311\nChunk Type: main\nVector Score: 0.498441219329834\nBM25 Score: unknown\nReranker Score: 3.3726983070373535\n\nContent:\nmation to correctly reasoning about and managing\nit. This trend strongly validates the necessity of a\nsophisticated strategic control module like SEA in\nadvanced RAG systems.\n6 Conclusion\nIn this paper, we introducedFAIR-RAG, a novel,\nagentic framework designed to address a key limi-\ntation of existing Retrieval-Augmented Generation\nsystems: their unreliability in handling complex,\nmulti-hop queries. By architecting an evidence-\ndriven, iterative process, FAIR-RAG advances be-\nyond the static “retrieve-then-read” paradigm. Our\ncore contributions—Adaptive Routing, theItera-\ntive Refinement Cycle, and the analytical gating\nmechanism of theStructured Evidence Assess-\nment (SEA)module—work in synergy to progres-\n\n\n\n[Source 6]\nFile: 01_2510.22344v1.pdf\nPage: 0\nChunk ID: 219\nChunk Type: main\nVector Score: 0.5087978839874268\nBM25 Score: unknown\nReranker Score: 2.350475549697876\n\nContent:\nprehensive context. In this paper, we introduce\nFAIR-RAG, a novel agentic framework that\ntransforms the standard RAG pipeline into a\ndynamic, evidence-driven reasoning process.\nAt the core of FAIR-RAG is an Iterative Refine-\nment Cycle governed by a novel module we\nterm Structured Evidence Assessment (SEA).\nThe SEA acts as an analytical gating mecha-\nnism: it deconstructs the initial query into a\nchecklist of required findings and systemati-\ncally audits the aggregated evidence to iden-\ntify confirmed facts and, critically, explicit in-\nformational gaps. These identified gaps pro-\nvide a precise, actionable signal to an Adap-\ntive Query Refinement agent, which then gen-\nerates new, targeted sub-queries to retrieve the\nmissing information. This cycle repeats until\nthe evidence is verified as sufficient, ensuring\na comprehensive context for a final, strictly\nfaithful generation step. We conduct exten-\nsive experiments on challenging multi-hop QA\nbenchmarks, including HotpotQA, 2WikiMul-\n\n\n\n[Source 7]\nFile: 01_2510.22344v1.pdf\nPage: 19\nChunk ID: 313\nChunk Type: main\nVector Score: 0.44156232476234436\nBM25 Score: 13.102962792057985\nReranker Score: 2.2065911293029785\n\nContent:\nthat warrant discussion:\n• Dependency on LLM Reasoning Fidelity\nand Prompt Engineering:The performance\nof FAIR-RAG’s modular agents (e.g., query\nrefinement, SEA) is inherently bound by two\nkey factors: the reasoning capabilities of the\nunderlying LLMs and the meticulous design\nof the prompts that guide them. While our\nstructured prompting methodology—which\nincorporates clear instructions, illustrative ex-\namples, and scaffolding techniques—is de-\nsigned to ensure consistency and robustness,\nthe system’s effectiveness remains sensitive\nto both the choice of the backbone model and\nthe specific phrasing of the prompts. This\ndual dependency is an intrinsic limitation of\ncurrent LLM-based agentic systems, where\nperformance gains are often tightly coupled\nwith advancements in both model architecture\nand sophisticated prompt engineering.\n• Comprehensiveness vs. Efficiency Trade-\noff:The iterative nature of FAIR-RAG, which\nis key to its high accuracy on complex queries,\n\n\n\n[Source 8]\nFile: 01_2605.05287v1.pdf\nPage: 0\nChunk ID: 424\nChunk Type: main\nVector Score: 0.5060631632804871\nBM25 Score: unknown\nReranker Score: 0.580880880355835\n\nContent:\nSecuring the Agent: Vendor-Neutral, Multitenant Enterprise\nRetrieval and Tool Use\nFrancisco Javier Arceo\nRed Hat AI\nBoston, USA\nfarceo@redhat.com\nVarsha Prasad Narsing\nRed Hat AI\nBoston, USA\nvnarsing@redhat.com\nAbstract\nRetrieval-Augmented Generation (RAG) and agentic AI sys-\ntems are increasingly prevalent in enterprise AI deployments.\nHowever, real enterprise environments introduce challenges\nlargely absent from academic treatments and consumer-facing\nAPIs: multiple tenants with heterogeneous data, strict access-\ncontrol requirements, regulatory compliance, and cost pres-\nsures that demand shared infrastructure.\nA fundamental problem underlies existing RAG architec-\ntures in these settings: retrieval systems rank documents\nby relevance—whether through semantic similarity, keyword\nmatching, or hybrid approaches—not by authorization, so\na query from one tenant can surface another tenant’s confi-\ndential data simply because it scores highest. We formalize\n",
+  "metadata": {
+    "query": "What is the architecture of agentic RAG?",
+    "backend": "paper-rag-assistant EngineeredRAG subprocess",
+    "retrieval_info": {
+      "mode": "global",
+      "query_route": {
+        "query_type": "general",
+        "retrieval_mode": "auto",
+        "paper_k": 4,
+        "chunk_k": 8,
+        "max_per_source": 3,
+        "reason": "No strong query type was detected; use automatic retrieval."
+      },
+      "candidate_papers": [
+        {
+          "source": "01_2510.22344v1.pdf",
+          "title": "01 2510.22344v1",
+          "score": 0.5456293821334839
+        },
+        {
+          "source": "01_2605.05287v1.pdf",
+          "title": "01 2605.05287v1",
+          "score": 0.5474084615707397
+        },
+        {
+          "source": "01_2510.25518v1.pdf",
+          "title": "01 2510.25518v1",
+          "score": 0.580412745475769
+        },
+        {
+          "source": "03_2412.12881v1.pdf",
+          "title": "03 2412.12881v1",
+          "score": 0.6251848936080933
+        }
+      ],
+      "selected_papers": [
+        {
+          "source": "01_2510.22344v1.pdf",
+          "title": "01 2510.22344v1",
+          "score": 0.5456293821334839
+        },
+        {
+          "source": "01_2605.05287v1.pdf",
+          "title": "01 2605.05287v1",
+          "score": 0.5474084615707397
+        },
+        {
+          "source": "01_2510.25518v1.pdf",
+          "title": "01 2510.25518v1",
+          "score": 0.580412745475769
+        },
+        {
+          "source": "03_2412.12881v1.pdf",
+          "title": "03 2412.12881v1",
+          "score": 0.6251848936080933
+        }
+      ]
+    },
+    "num_docs": 8,
+    "evidence_blocks": [
+      {
+        "source_id": 1,
+        "file": "01_2510.25518v1.pdf",
+        "page": 2,
+        "chunk_id": 390,
+        "chunk_type": "main",
+        "vector_score": 0.3768274784088135,
+        "bm25_score": 14.953856362194019,
+        "reranker_score": 5.943637371063232,
+        "content": "architecture.\nA. Baseline RAG System\nThe Baseline RAG system, which will be referred to as\n\"B-RAG\" for the remainder of this work, represents a stan-\ndard retrieval pipeline that serves as a comparison point for\nour agentic architecture. This approach follows a sequential\nprocess, as illustrated in Figure 2.\nThe B-RAG system, illustrated in Figure 2, consists of a\nsequence of specialized agents structured to enable stepwise\ninformation retrieval and synthesis. The process begins with\nthe user’s initial input, which serves as the contextual founda-\ntion for subsequent components. This input is then propagated\nthrough the following agents:\n(a)Query Reformulator Agent: Takes the user’s question\nand refines it into a concise, keyword-focused query\noptimized for retrieval. It uses predefined prompt tem-\nplates to detect if the query is a continuation of previous\ninteractions or a standalone new topic.\n(b)Retriever Agent: Executes a single-pass retrieval from the"
+      },
+      {
+        "source_id": 2,
+        "file": "01_2510.25518v1.pdf",
+        "page": 1,
+        "chunk_id": 385,
+        "chunk_type": "main",
+        "vector_score": 0.3769589066505432,
+        "bm25_score": 14.50293956142773,
+        "reranker_score": 5.5098676681518555,
+        "content": "tion II reviews relevant work in RAG, multi-agent pipelines,\nand domain-specific retrieval systems. Section III describes\nour methodology, including the design of the baseline and\nagentic RAG architectures. Section IV details the knowledge\nbase preparation and the construction of the evaluation dataset.\nSection V presents the experimental setup and results, compar-\ning retrieval accuracy and latency across configurations. Sec-\ntion VI provides a qualitative error analysis and discussion of\nobserved performance patterns. Finally, Section VII concludes\nthe paper and outlines directions for future work.\nII. RELATEDWORK\nAgentic RAG:Recent work has increasingly explored en-\nhancing Retrieval-Augmented Generation (RAG) systems with\nstructured, multi-agent architectures for complex information\ntasks. Agentic RAG integrates autonomous AI agents into the\npipeline, enabling dynamic query decomposition and iterative\nreasoning. Singhet al.introduce the concept of Agentic RAG,"
+      },
+      {
+        "source_id": 3,
+        "file": "01_2605.05287v1.pdf",
+        "page": 1,
+        "chunk_id": 434,
+        "chunk_type": "main",
+        "vector_score": 0.4681120812892914,
+        "bm25_score": 16.267414365337558,
+        "reranker_score": 5.0382537841796875,
+        "content": "may accumulate context that crosses security boundaries.\nThis paper focuses on agentic RAG—the intersection of\nretrieval-augmented generation and autonomous tool use—as\nthe primary case study, since retrieval is where the relevance-\nauthorization gap is most acute. However, the layered iso-\nlation architecture and server-side enforcement patterns we\npropose are general and extend to other agentic capabili-\nties including inference, tool execution, code generation, and\nmulti-step workflows.\n1.3 Contributions\nThis paper makes the following contributions:\n(1) We formalize therelevance-authorization gapin mul-\ntitenant RAG, showing why relevance ranking alone\nis insufficient to enforce isolation without explicit au-\nthorization predicates [12, 14], and provide empirical\nevidence that ungated retrieval leaks cross-tenant data\nin 98–100% of probes.\n(2) We propose a layered isolation architecture combin-\ning policy-aware ingestion, retrieval-time gating, and"
+      },
+      {
+        "source_id": 4,
+        "file": "01_2510.25518v1.pdf",
+        "page": 0,
+        "chunk_id": 375,
+        "chunk_type": "main",
+        "vector_score": 0.5211706161499023,
+        "bm25_score": 12.801170521040303,
+        "reranker_score": 4.930066108703613,
+        "content": "Retrieval Augmented Generation (RAG) for\nFintech: Agentic Design and Evaluation\n1,3Thomas Cook ∗, 2,3Richard Osuagwu ∗, 1,3Liman Tsatiashvili ∗, 4,3Vrynsia Vrynsia ∗,\n3Koustav Ghosal, 3Maraim Masoud, 3Riccardo Mattivi\n1TU Dublin, Dublin, Ireland\n2Maynooth University, Ireland\n3Mastercard, Ireland\n4National College of Ireland, Ireland\n{firstname.lastname}@mastercard.com\nAbstract—Retrieval-Augmented Generation (RAG) systems of-\nten face limitations in specialized domains such as fintech, where\ndomain-specific ontologies, dense terminology, and acronyms\ncomplicate effective retrieval and synthesis. This paper introduces\nan agentic RAG architecture designed to address these challenges\nthrough a modular pipeline of specialised agents. The proposed\nsystem supports intelligent query reformulation, iterative sub-\nquery decomposition guided by keyphrase extraction, contextual\nacronym resolution, and cross-encoder-based context re-ranking.\nWe evaluate our approach against a standard RAG baseline"
+      },
+      {
+        "source_id": 5,
+        "file": "01_2510.22344v1.pdf",
+        "page": 18,
+        "chunk_id": 311,
+        "chunk_type": "main",
+        "vector_score": 0.498441219329834,
+        "bm25_score": "unknown",
+        "reranker_score": 3.3726983070373535,
+        "content": "mation to correctly reasoning about and managing\nit. This trend strongly validates the necessity of a\nsophisticated strategic control module like SEA in\nadvanced RAG systems.\n6 Conclusion\nIn this paper, we introducedFAIR-RAG, a novel,\nagentic framework designed to address a key limi-\ntation of existing Retrieval-Augmented Generation\nsystems: their unreliability in handling complex,\nmulti-hop queries. By architecting an evidence-\ndriven, iterative process, FAIR-RAG advances be-\nyond the static “retrieve-then-read” paradigm. Our\ncore contributions—Adaptive Routing, theItera-\ntive Refinement Cycle, and the analytical gating\nmechanism of theStructured Evidence Assess-\nment (SEA)module—work in synergy to progres-"
+      },
+      {
+        "source_id": 6,
+        "file": "01_2510.22344v1.pdf",
+        "page": 0,
+        "chunk_id": 219,
+        "chunk_type": "main",
+        "vector_score": 0.5087978839874268,
+        "bm25_score": "unknown",
+        "reranker_score": 2.350475549697876,
+        "content": "prehensive context. In this paper, we introduce\nFAIR-RAG, a novel agentic framework that\ntransforms the standard RAG pipeline into a\ndynamic, evidence-driven reasoning process.\nAt the core of FAIR-RAG is an Iterative Refine-\nment Cycle governed by a novel module we\nterm Structured Evidence Assessment (SEA).\nThe SEA acts as an analytical gating mecha-\nnism: it deconstructs the initial query into a\nchecklist of required findings and systemati-\ncally audits the aggregated evidence to iden-\ntify confirmed facts and, critically, explicit in-\nformational gaps. These identified gaps pro-\nvide a precise, actionable signal to an Adap-\ntive Query Refinement agent, which then gen-\nerates new, targeted sub-queries to retrieve the\nmissing information. This cycle repeats until\nthe evidence is verified as sufficient, ensuring\na comprehensive context for a final, strictly\nfaithful generation step. We conduct exten-\nsive experiments on challenging multi-hop QA\nbenchmarks, including HotpotQA, 2WikiMul-"
+      },
+      {
+        "source_id": 7,
+        "file": "01_2510.22344v1.pdf",
+        "page": 19,
+        "chunk_id": 313,
+        "chunk_type": "main",
+        "vector_score": 0.44156232476234436,
+        "bm25_score": 13.102962792057985,
+        "reranker_score": 2.2065911293029785,
+        "content": "that warrant discussion:\n• Dependency on LLM Reasoning Fidelity\nand Prompt Engineering:The performance\nof FAIR-RAG’s modular agents (e.g., query\nrefinement, SEA) is inherently bound by two\nkey factors: the reasoning capabilities of the\nunderlying LLMs and the meticulous design\nof the prompts that guide them. While our\nstructured prompting methodology—which\nincorporates clear instructions, illustrative ex-\namples, and scaffolding techniques—is de-\nsigned to ensure consistency and robustness,\nthe system’s effectiveness remains sensitive\nto both the choice of the backbone model and\nthe specific phrasing of the prompts. This\ndual dependency is an intrinsic limitation of\ncurrent LLM-based agentic systems, where\nperformance gains are often tightly coupled\nwith advancements in both model architecture\nand sophisticated prompt engineering.\n• Comprehensiveness vs. Efficiency Trade-\noff:The iterative nature of FAIR-RAG, which\nis key to its high accuracy on complex queries,"
+      },
+      {
+        "source_id": 8,
+        "file": "01_2605.05287v1.pdf",
+        "page": 0,
+        "chunk_id": 424,
+        "chunk_type": "main",
+        "vector_score": 0.5060631632804871,
+        "bm25_score": "unknown",
+        "reranker_score": 0.580880880355835,
+        "content": "Securing the Agent: Vendor-Neutral, Multitenant Enterprise\nRetrieval and Tool Use\nFrancisco Javier Arceo\nRed Hat AI\nBoston, USA\nfarceo@redhat.com\nVarsha Prasad Narsing\nRed Hat AI\nBoston, USA\nvnarsing@redhat.com\nAbstract\nRetrieval-Augmented Generation (RAG) and agentic AI sys-\ntems are increasingly prevalent in enterprise AI deployments.\nHowever, real enterprise environments introduce challenges\nlargely absent from academic treatments and consumer-facing\nAPIs: multiple tenants with heterogeneous data, strict access-\ncontrol requirements, regulatory compliance, and cost pres-\nsures that demand shared infrastructure.\nA fundamental problem underlies existing RAG architec-\ntures in these settings: retrieval systems rank documents\nby relevance—whether through semantic similarity, keyword\nmatching, or hybrid approaches—not by authorization, so\na query from one tenant can surface another tenant’s confi-\ndential data simply because it scores highest. We formalize"
+      }
+    ],
+    "sources": [
+      {
+        "source": "01_2510.25518v1.pdf",
+        "page": 2,
+        "chunk_id": 390,
+        "chunk_type": "main",
+        "reranker_score": 5.943637371063232,
+        "vector_score": 0.3768274784088135,
+        "bm25_score": 14.953856362194019
+      },
+      {
+        "source": "01_2510.25518v1.pdf",
+        "page": 1,
+        "chunk_id": 385,
+        "chunk_type": "main",
+        "reranker_score": 5.5098676681518555,
+        "vector_score": 0.3769589066505432,
+        "bm25_score": 14.50293956142773
+      },
+      {
+        "source": "01_2605.05287v1.pdf",
+        "page": 1,
+        "chunk_id": 434,
+        "chunk_type": "main",
+        "reranker_score": 5.0382537841796875,
+        "vector_score": 0.4681120812892914,
+        "bm25_score": 16.267414365337558
+      },
+      {
+        "source": "01_2510.25518v1.pdf",
+        "page": 0,
+        "chunk_id": 375,
+        "chunk_type": "main",
+        "reranker_score": 4.930066108703613,
+        "vector_score": 0.5211706161499023,
+        "bm25_score": 12.801170521040303
+      },
+      {
+        "source": "01_2510.22344v1.pdf",
+        "page": 18,
+        "chunk_id": 311,
+        "chunk_type": "main",
+        "reranker_score": 3.3726983070373535,
+        "vector_score": 0.498441219329834,
+        "bm25_score": null
+      },
+      {
+        "source": "01_2510.22344v1.pdf",
+        "page": 0,
+        "chunk_id": 219,
+        "chunk_type": "main",
+        "reranker_score": 2.350475549697876,
+        "vector_score": 0.5087978839874268,
+        "bm25_score": null
+      },
+      {
+        "source": "01_2510.22344v1.pdf",
+        "page": 19,
+        "chunk_id": 313,
+        "chunk_type": "main",
+        "reranker_score": 2.2065911293029785,
+        "vector_score": 0.44156232476234436,
+        "bm25_score": 13.102962792057985
+      },
+      {
+        "source": "01_2605.05287v1.pdf",
+        "page": 0,
+        "chunk_id": 424,
+        "chunk_type": "main",
+        "reranker_score": 0.580880880355835,
+        "vector_score": 0.5060631632804871,
+        "bm25_score": null
+      }
+    ]
+  }
+}

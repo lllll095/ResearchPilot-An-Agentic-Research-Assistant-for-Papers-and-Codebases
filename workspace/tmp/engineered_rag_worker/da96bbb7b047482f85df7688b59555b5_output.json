@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "content": "Engineered RAG index rebuilt successfully.\npaper-rag-assistant root: C:\\Users\\22168\\Desktop\\Working\\paper-rag-assistant\nChunk index directory: C:\\Users\\22168\\Desktop\\Working\\paper-rag-assistant\\chroma_db\nPaper catalog directory: C:\\Users\\22168\\Desktop\\Working\\paper-rag-assistant\\paper_catalog_db",
+  "metadata": {
+    "rag_root": "C:\\Users\\22168\\Desktop\\Working\\paper-rag-assistant",
+    "chroma_db": "C:\\Users\\22168\\Desktop\\Working\\paper-rag-assistant\\chroma_db",
+    "paper_catalog_db": "C:\\Users\\22168\\Desktop\\Working\\paper-rag-assistant\\paper_catalog_db"
+  }
+}

@@ -28,10 +28,22 @@ from research_pilot.tools.engineered_rag_tool import (
     EngineeredRAGSearchTool,
 )
 from research_pilot.tools.evidence_answer_tool import WriteEvidenceAnswerTool
+from research_pilot.workflows.paper_workflows import PaperWorkflowRunner
+
 
 app = typer.Typer(help="ResearchPilot command line interface.")
 console = Console()
 
+def build_paper_workflow_runner() -> PaperWorkflowRunner:
+    """Build deterministic paper workflow runner."""
+
+    loop = build_runtime(policy_name="llm")
+
+    return PaperWorkflowRunner(
+        tool_runtime=loop.tool_runtime,
+        trace_store=loop.trace_store,
+        console=console,
+    )
 
 def build_policy(policy_name: str) -> AgentPolicy:
     """Build an Agent policy by name."""
@@ -165,6 +177,109 @@ Use save_report to save the final research report before final_answer.
     result = loop.run_state(state)
 
     console.rule("[bold green]Final Answer")
+    console.print(result.final_answer)
+
+@app.command("paper-answer")
+def paper_answer(
+    question: str,
+    save_report: bool = typer.Option(
+        False,
+        "--save-report",
+        help="Save the citation-aware answer as a markdown report.",
+    ),
+    report_title: str | None = typer.Option(
+        None,
+        "--report-title",
+        help="Optional report title.",
+    ),
+):
+    """Answer a question using already indexed papers."""
+
+    runner = build_paper_workflow_runner()
+    result = runner.paper_answer(
+        question=question,
+        save_report=save_report,
+        report_title=report_title,
+    )
+
+    console.rule("[bold green]Paper Answer")
+    console.print(result.final_answer)
+
+@app.command("paper-collect")
+def paper_collect(
+    topic: str,
+    max_papers: int = typer.Option(
+        3,
+        "--max-papers",
+        "-n",
+        help="Maximum number of new papers to download.",
+    ),
+    rebuild_index: bool = typer.Option(
+        True,
+        "--rebuild-index/--no-rebuild-index",
+        help="Whether to rebuild the EngineeredRAG index after downloading.",
+    ),
+):
+    """Search, download, and index papers for a topic."""
+
+    runner = build_paper_workflow_runner()
+    result = runner.paper_collect(
+        topic=topic,
+        max_papers=max_papers,
+        rebuild_index=rebuild_index,
+    )
+
+    console.rule("[bold green]Paper Collection Result")
+    console.print(result.final_answer)
+
+@app.command("paper-research")
+def paper_research(
+    question: str,
+    max_papers: int = typer.Option(
+        3,
+        "--max-papers",
+        "-n",
+        help="Maximum number of new papers to download if local evidence is insufficient.",
+    ),
+    min_sources: int = typer.Option(
+        3,
+        "--min-sources",
+        help="Minimum number of evidence blocks required before skipping download.",
+    ),
+    force_download: bool = typer.Option(
+        False,
+        "--force-download",
+        help="Always download new papers before answering.",
+    ),
+    save_report: bool = typer.Option(
+        True,
+        "--save-report/--no-save-report",
+        help="Whether to save the final answer as a report.",
+    ),
+    report_title: str | None = typer.Option(
+        None,
+        "--report-title",
+        help="Optional report title.",
+    ),
+):
+    """Local-first paper research workflow.
+
+    It first searches indexed papers. If evidence is insufficient, it downloads
+    new papers, rebuilds the index, searches again, then writes a citation-aware
+    answer and optionally saves a report.
+    """
+
+    runner = build_paper_workflow_runner()
+    result = runner.paper_research(
+        question=question,
+        max_papers=max_papers,
+        min_sources=min_sources,
+        force_download=force_download,
+        save_report=save_report,
+        report_title=report_title,
+    )
+
+    console.rule("[bold green]Paper Research Result")
     console.print(result.final_answer)
 
 if __name__ == "__main__":

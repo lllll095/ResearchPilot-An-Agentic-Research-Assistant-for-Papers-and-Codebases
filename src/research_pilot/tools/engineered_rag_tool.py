@@ -6,6 +6,8 @@ import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+import subprocess
+import uuid
 
 from dotenv import load_dotenv
 
@@ -160,6 +162,73 @@ def _copy_pdfs_to_rag_project(local_pdfs: list[Path], rag_root: Path) -> list[di
 
     return copied
 
+def _run_engineered_worker(
+    command: str,
+    payload: dict[str, Any] | None = None,
+    timeout: int = 3600,
+) -> dict[str, Any]:
+    """Run EngineeredRAG operation in a separate Python subprocess.
+
+    This prevents Chroma file locks from being held by the ResearchPilot process.
+    """
+
+    workspace = Path(settings.workspace)
+    tmp_dir = workspace / "tmp" / "engineered_rag_worker"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    job_id = uuid.uuid4().hex
+    input_path = tmp_dir / f"{job_id}_input.json"
+    output_path = tmp_dir / f"{job_id}_output.json"
+
+    request = {
+        "command": command,
+        "payload": payload or {},
+    }
+
+    input_path.write_text(
+        json.dumps(request, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "research_pilot.workers.engineered_rag_worker",
+        "--input",
+        str(input_path),
+        "--output",
+        str(output_path),
+    ]
+
+    process = subprocess.run(
+        cmd,
+        cwd=str(Path(__file__).resolve().parents[3]),
+        timeout=timeout,
+    )
+
+    if not output_path.exists():
+        return {
+            "success": False,
+            "content": (
+                "EngineeredRAG worker did not produce an output file.\n"
+                f"Command: {command}\n"
+                f"Return code: {process.returncode}"
+            ),
+            "error": "EngineeredRAGWorkerNoOutput",
+            "metadata": {
+                "return_code": process.returncode,
+                "command": command,
+            },
+        }
+
+    result = json.loads(output_path.read_text(encoding="utf-8"))
+
+    if process.returncode != 0 and result.get("success"):
+        result["success"] = False
+        result["error"] = "EngineeredRAGWorkerFailed"
+        result["content"] += f"\n\nWorker return code: {process.returncode}"
+
+    return result
 
 @lru_cache(maxsize=1)
 def _load_engineered_rag_class():
@@ -211,23 +280,27 @@ class EngineeredRAGIndexTool(BaseTool):
                 local_pdfs = _collect_researchpilot_pdfs(self.workspace)
                 copied = _copy_pdfs_to_rag_project(local_pdfs, rag_root)
 
-            build_index_module = _load_build_index_module()
-            build_catalog_module = _load_build_catalog_module()
+            result = _run_engineered_worker(
+                command="index",
+                payload={},
+                timeout=3600,
+            )
 
-            build_index_module.build_index()
-            build_catalog_module.build_catalog()
-
-            # EngineeredRAG class is cached, but after rebuilding indexes we want
-            # a fresh instance next time.
-            _load_engineered_rag_class.cache_clear()
+            if not result.get("success"):
+                return Observation(
+                    success=False,
+                    content=result.get("content", "EngineeredRAG index worker failed."),
+                    error=result.get("error", "EngineeredRAGIndexFailed"),
+                    metadata=result.get("metadata", {}),
+                )
 
             content = (
-                "Engineered RAG index rebuilt successfully.\n"
-                f"paper-rag-assistant root: {rag_root}\n"
-                f"Synced PDFs: {len(copied)}\n"
-                f"Chunk index directory: {rag_root / 'chroma_db'}\n"
-                f"Paper catalog directory: {rag_root / 'paper_catalog_db'}"
+                result.get("content", "")
+                + f"\nSynced PDFs: {len(copied)}"
             )
+
+            metadata = result.get("metadata", {})
+            metadata["synced_pdfs"] = copied
 
             if state is not None:
                 state.evidence_store.add(
@@ -235,20 +308,14 @@ class EngineeredRAGIndexTool(BaseTool):
                         evidence_type=EvidenceType.PAPER,
                         source="engineered_rag_index",
                         content=content,
-                        metadata={
-                            "rag_root": str(rag_root),
-                            "synced_pdfs": copied,
-                        },
+                        metadata=metadata,
                     )
                 )
 
             return Observation(
                 success=True,
                 content=content,
-                metadata={
-                    "rag_root": str(rag_root),
-                    "synced_pdfs": copied,
-                },
+                metadata=metadata,
             )
 
         except Exception as exc:
@@ -290,79 +357,29 @@ class EngineeredRAGSearchTool(BaseTool):
                 error="MissingQuery",
             )
 
-        paper_k = tool_input.get("paper_k")
-        chunk_k = tool_input.get("chunk_k")
+        payload = {
+            "query": query,
+            "paper_k": tool_input.get("paper_k"),
+            "chunk_k": tool_input.get("chunk_k"),
+        }
 
         try:
-            EngineeredRAG = _load_engineered_rag_class()
-            rag = EngineeredRAG()
-
-            docs, retrieval_info = rag.retrieve(
-                query=query,
-                paper_k=paper_k,
-                chunk_k=chunk_k,
+            result = _run_engineered_worker(
+                command="search",
+                payload=payload,
+                timeout=1800,
             )
 
-            context = rag.format_context(docs)
-
-            content = (
-                "EngineeredRAG retrieved evidence chunks.\n\n"
-                f"Query: {query}\n"
-                f"Retrieval mode: {retrieval_info.get('mode')}\n\n"
-                "Important downstream instruction:\n"
-                "- The retrieved context below is already extracted text from indexed PDFs.\n"
-                "- Do not call read_file on the returned source filenames.\n"
-                "- If more evidence is needed, call engineered_rag_search again with a refined query.\n\n"
-                "- For final question answering, call write_evidence_answer using this retrieved evidence.\n\n"
-                f"Candidate papers:\n"
-            )
-
-            evidence_blocks = []
-
-            for i, doc in enumerate(docs, start=1):
-                evidence_blocks.append(
-                    {
-                        "source_id": i,
-                        "file": doc.metadata.get("source", "unknown"),
-                        "page": doc.metadata.get("page", "unknown"),
-                        "chunk_id": doc.metadata.get("chunk_id", "unknown"),
-                        "chunk_type": doc.metadata.get("chunk_type", "unknown"),
-                        "vector_score": doc.metadata.get("vector_score", "unknown"),
-                        "bm25_score": doc.metadata.get("bm25_score", "unknown"),
-                        "reranker_score": doc.metadata.get("reranker_score", "unknown"),
-                        "content": doc.page_content,
-                    }
+            if not result.get("success"):
+                return Observation(
+                    success=False,
+                    content=result.get("content", "EngineeredRAG search worker failed."),
+                    error=result.get("error", "EngineeredRAGSearchFailed"),
+                    metadata=result.get("metadata", {}),
                 )
 
-            for item in retrieval_info.get("candidate_papers", []):
-                content += (
-                    f"- {item.get('title')} | "
-                    f"source={item.get('source')} | "
-                    f"score={item.get('score')}\n"
-                )
-
-            content += "\nRetrieved context:\n"
-            content += context
-
-            metadata = {
-                "query": query,
-                "backend": "paper-rag-assistant EngineeredRAG",
-                "retrieval_info": retrieval_info,
-                "num_docs": len(docs),
-                "evidence_blocks": evidence_blocks,
-                "sources": [
-                    {
-                        "source": doc.metadata.get("source"),
-                        "page": doc.metadata.get("page"),
-                        "chunk_id": doc.metadata.get("chunk_id"),
-                        "chunk_type": doc.metadata.get("chunk_type"),
-                        "reranker_score": doc.metadata.get("reranker_score"),
-                        "vector_score": doc.metadata.get("vector_score"),
-                        "bm25_score": doc.metadata.get("bm25_score"),
-                    }
-                    for doc in docs
-                ],
-            }
+            content = result.get("content", "")
+            metadata = result.get("metadata", {})
 
             if state is not None:
                 state.evidence_store.add(
@@ -386,12 +403,7 @@ class EngineeredRAGSearchTool(BaseTool):
                 content=(
                     "Failed to search EngineeredRAG backend.\n"
                     f"Error type: {type(exc).__name__}\n"
-                    f"Error message: {exc}\n\n"
-                    "Possible fixes:\n"
-                    "1. Check PAPER_RAG_ASSISTANT_ROOT.\n"
-                    "2. Install paper-rag-assistant requirements.\n"
-                    "3. Run engineered_rag_index first.\n"
-                    "4. Check paper-rag-assistant/.env for DASHSCOPE_API_KEY, LLM_BASE_URL, and LLM_MODEL."
+                    f"Error message: {exc}"
                 ),
                 error="EngineeredRAGSearchFailed",
             )
@@ -425,41 +437,29 @@ class EngineeredRAGAnswerTool(BaseTool):
                 error="MissingQuestion",
             )
 
-        paper_k = tool_input.get("paper_k")
-        chunk_k = tool_input.get("chunk_k")
+        payload = {
+            "question": question,
+            "paper_k": tool_input.get("paper_k"),
+            "chunk_k": tool_input.get("chunk_k"),
+        }
 
         try:
-            EngineeredRAG = _load_engineered_rag_class()
-            rag = EngineeredRAG()
-
-            answer, docs, retrieval_info = rag.answer_question(
-                question=question,
-                paper_k=paper_k,
-                chunk_k=chunk_k,
-                show_debug=False,
+            result = _run_engineered_worker(
+                command="answer",
+                payload=payload,
+                timeout=1800,
             )
 
-            content = (
-                "EngineeredRAG answer:\n\n"
-                f"{answer}\n\n"
-                "Retrieved sources:\n"
-            )
-
-            for i, doc in enumerate(docs, start=1):
-                content += (
-                    f"[Source {i}] "
-                    f"{doc.metadata.get('source')}, "
-                    f"page={doc.metadata.get('page')}, "
-                    f"chunk={doc.metadata.get('chunk_id')}, "
-                    f"reranker_score={doc.metadata.get('reranker_score')}\n"
+            if not result.get("success"):
+                return Observation(
+                    success=False,
+                    content=result.get("content", "EngineeredRAG answer worker failed."),
+                    error=result.get("error", "EngineeredRAGAnswerFailed"),
+                    metadata=result.get("metadata", {}),
                 )
 
-            metadata = {
-                "question": question,
-                "backend": "paper-rag-assistant EngineeredRAG",
-                "retrieval_info": retrieval_info,
-                "num_docs": len(docs),
-            }
+            content = result.get("content", "")
+            metadata = result.get("metadata", {})
 
             if state is not None:
                 state.evidence_store.add(
