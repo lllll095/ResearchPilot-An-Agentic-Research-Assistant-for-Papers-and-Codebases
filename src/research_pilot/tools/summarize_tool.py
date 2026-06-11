@@ -19,6 +19,7 @@ class SummarizeEvidenceTool(BaseTool):
             input_schema={
                 "task": "Research task or question to summarize evidence for.",
                 "max_evidence_items": "Optional number of evidence items to use. Default is 6.",
+                "max_chars_per_item": "Optional max characters per evidence item. Default is 2500.",
             },
         )
 
@@ -32,11 +33,13 @@ class SummarizeEvidenceTool(BaseTool):
 
         task = tool_input.get("task", state.user_goal)
         max_evidence_items = int(tool_input.get("max_evidence_items", 6))
+        max_chars_per_item = int(tool_input.get("max_chars_per_item", 2500))
 
         summary = self.summarizer.summarize(
             task=task,
             evidence_store=state.evidence_store,
             max_evidence_items=max_evidence_items,
+            max_chars_per_item=max_chars_per_item,
         )
 
         state.evidence_store.add(

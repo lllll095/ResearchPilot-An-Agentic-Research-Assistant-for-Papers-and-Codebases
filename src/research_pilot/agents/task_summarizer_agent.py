@@ -16,8 +16,9 @@ class TaskSummarizerAgent:
         task: str,
         evidence_store: EvidenceStore,
         max_evidence_items: int = 6,
+        max_chars_per_item: int = 2500,
     ) -> str:
-        evidence_text = evidence_store.render(max_items=max_evidence_items)
+        evidence_text = evidence_store.render(max_items=max_evidence_items, max_chars_per_item=max_chars_per_item)
 
         if self.llm_client is None:
             return self._fallback_summary(task, evidence_text)

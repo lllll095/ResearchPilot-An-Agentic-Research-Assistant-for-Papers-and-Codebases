@@ -28,6 +28,9 @@ class LLMAgentPolicy:
         "summarize_evidence",
         "paper_search",
         "paper_download",
+        "engineered_rag_index",
+        "engineered_rag_search",
+        "engineered_rag_answer",
     }
 
     def __init__(self, llm_client: OpenAICompatibleLLMClient):
@@ -127,6 +130,17 @@ Paper rules:
 - Do not use read_file directly on downloaded PDF files unless the user explicitly asks to inspect PDF text.
 - After paper_download succeeds, use its observation and manifest as evidence. The downloaded PDFs will be used later by the Paper RAG indexing pipeline.
 - Use summarize_evidence after collecting search or paper evidence when a summary is needed.
+
+Engineered RAG rules:
+- If the user asks to index downloaded papers into the previous RAG project, call engineered_rag_index.
+- If the user asks to search downloaded/indexed papers for evidence, call engineered_rag_search.
+- If the user asks to answer a paper question using the previous engineered RAG system, call engineered_rag_answer.
+- engineered_rag_search already returns extracted evidence chunks from indexed PDFs.
+- After engineered_rag_search succeeds, do not call read_file on the returned source filenames.
+- Source filenames from engineered_rag_search are citations, not paths for read_file.
+- If more evidence is needed, call engineered_rag_search again with a refined query.
+- If engineered_rag_search fails because indexes are missing, call engineered_rag_index first.
+- Do not call engineered_rag_index repeatedly unless new papers were downloaded or the user asks to rebuild the index.
 
 Tool rules:
 - Use only tools listed in the context.
