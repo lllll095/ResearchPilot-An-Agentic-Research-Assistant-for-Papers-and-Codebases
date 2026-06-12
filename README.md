@@ -734,3 +734,57 @@ It demonstrates:
 The core idea is:
 
 > Use LLMs for reasoning and generation, but use deterministic workflows, structured evidence, and evaluation harnesses to make the system stable and inspectable.
+
+## Current Project Status
+
+ResearchPilot currently supports two major capabilities:
+
+### 1. Paper Research Agent
+
+The paper research workflow supports:
+
+* Searching and downloading papers.
+* Building or updating a local paper index.
+* Querying indexed papers through the external EngineeredRAG backend.
+* Generating citation-aware answers from retrieved evidence.
+* Saving reports.
+* Evaluating paper answers through rule-based checks and optional LLM judge.
+
+Main commands:
+
+```bash
+research-pilot paper-answer "What is the architecture of agentic RAG?"
+research-pilot paper-collect "agentic RAG architecture" --max-papers 3
+research-pilot paper-research "Write a report about agentic RAG architecture."
+research-pilot eval-paper
+research-pilot eval-paper --llm-judge
+```
+
+### 2. Codebase Understanding Agent
+
+The codebase workflow supports:
+
+* Mapping the project source tree.
+* Searching code files.
+* Reading code files with line numbers.
+* Generating grounded codebase explanations.
+* Routing codebase questions from the general `ask` command.
+* Evaluating code answers through rule-based checks.
+
+Main commands:
+
+```bash
+research-pilot code-answer "Explain how AgentLoop works in this project."
+research-pilot ask "AgentLoop 是怎么实现的？"
+research-pilot eval-code
+```
+
+### Design Philosophy
+
+ResearchPilot follows a hybrid agent design:
+
+```text
+LLM reasoning + structured tools + deterministic workflows + evidence store + trace + evaluation
+```
+
+The goal is not only to make the agent answer questions, but also to make its behavior traceable, inspectable, and evaluable.
