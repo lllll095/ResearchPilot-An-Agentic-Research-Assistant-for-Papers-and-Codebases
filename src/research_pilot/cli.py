@@ -3,6 +3,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from research_pilot.agents.llm_agent import LLMAgentPolicy
 from research_pilot.agents.mock_agent import MockAgentPolicy
 from research_pilot.config import settings
 from research_pilot.core.agent_loop import AgentLoop, AgentPolicy
@@ -32,6 +33,13 @@ from research_pilot.workflows.paper_workflows import PaperWorkflowRunner
 from research_pilot.workflows.intent_router import IntentRouter, IntentType
 from research_pilot.evaluation.paper_eval import PaperWorkflowEvaluator
 from research_pilot.evaluation.llm_judge import PaperAnswerLLMJudge
+from research_pilot.tools.codebase_tools import (
+    CodeMapTool,
+    CodeReadTool,
+    CodeSearchTool,
+)
+from research_pilot.tools.code_answer_tool import WriteCodeAnswerTool
+from research_pilot.workflows.code_workflows import CodeWorkflowRunner
 
 app = typer.Typer(help="ResearchPilot command line interface.")
 console = Console()
@@ -47,20 +55,43 @@ def build_paper_workflow_runner() -> PaperWorkflowRunner:
         console=console,
     )
 
-def build_policy(policy_name: str) -> AgentPolicy:
-    """Build an Agent policy by name."""
+def build_code_workflow_runner() -> CodeWorkflowRunner:
+    """Build deterministic code workflow runner."""
 
-    normalized = policy_name.lower().strip()
+    loop = build_runtime(policy_name="llm")
 
-    if normalized == "mock":
+    return CodeWorkflowRunner(
+        tool_runtime=loop.tool_runtime,
+        trace_store=loop.trace_store,
+        console=console,
+    )
+
+def build_policy(policy_name: str, tool_runtime=None):
+    if policy_name == "mock":
         return MockAgentPolicy()
 
-    if normalized == "llm":
-        from research_pilot.agents.llm_agent import LLMAgentPolicy
+    if policy_name == "llm":
         from research_pilot.core.llm_client import OpenAICompatibleLLMClient
 
         llm_client = OpenAICompatibleLLMClient.from_settings()
-        return LLMAgentPolicy(llm_client=llm_client)
+
+        tool_specs = []
+        if tool_runtime is not None:
+            if hasattr(tool_runtime, "list_tool_specs"):
+                tool_specs = tool_runtime.list_tool_specs()
+            elif hasattr(tool_runtime, "tool_specs"):
+                maybe_specs = tool_runtime.tool_specs
+                tool_specs = maybe_specs() if callable(maybe_specs) else maybe_specs
+            elif hasattr(tool_runtime, "tools"):
+                tool_specs = [
+                    tool.spec()
+                    for tool in tool_runtime.tools.values()
+                ]
+
+        return LLMAgentPolicy(
+            llm_client=llm_client,
+            tool_specs=tool_specs,
+        )
 
     raise ValueError(f"Unknown policy: {policy_name}. Use 'mock' or 'llm'.")
 
@@ -76,6 +107,10 @@ def build_runtime(policy_name: str = "mock") -> AgentLoop:
     tool_runtime.register(ReadFileTool(permission_checker))
     tool_runtime.register(SaveNoteTool(workspace / "notes"))
     tool_runtime.register(ShellTool(permission_checker))
+    tool_runtime.register(CodeMapTool())
+    tool_runtime.register(CodeSearchTool())
+    tool_runtime.register(CodeReadTool())
+    
     tool_runtime.register(TodoWriteTool())
     tool_runtime.register(TodoReadTool())
     if settings.web_search_backend.lower() == "tavily":
@@ -86,6 +121,8 @@ def build_runtime(policy_name: str = "mock") -> AgentLoop:
     tool_llm_client = None
     if policy_name.lower().strip() == "llm":
         tool_llm_client = OpenAICompatibleLLMClient.from_settings()
+
+    tool_runtime.register(WriteCodeAnswerTool(llm_client=tool_llm_client))
 
     tool_runtime.register(SummarizeEvidenceTool(llm_client=tool_llm_client))
     tool_runtime.register(WriteEvidenceAnswerTool(llm_client=tool_llm_client))
@@ -99,7 +136,7 @@ def build_runtime(policy_name: str = "mock") -> AgentLoop:
     context_manager = ContextManager()
     trace_store = TraceStore(workspace / "traces")
     hook_manager = HookManager()
-    policy = build_policy(policy_name)
+    policy = build_policy(policy_name, tool_runtime=tool_runtime)
 
     return AgentLoop(
         policy=policy,
@@ -395,6 +432,39 @@ def eval_paper(
     console.print(f"Pass rate: {summary.pass_rate:.1%}")
     console.print(f"Results: {summary.results_path}")
     console.print(f"Summary: {summary.summary_path}")
-    
+
+@app.command("code-answer")
+def code_answer(
+    question: str,
+    path: str = typer.Option(
+        "src/research_pilot",
+        "--path",
+        help="Project path to inspect.",
+    ),
+    max_results: int = typer.Option(
+        20,
+        "--max-results",
+        help="Maximum code search matches.",
+    ),
+    max_files: int = typer.Option(
+        3,
+        "--max-files",
+        help="Maximum matched files to read.",
+    ),
+):
+    """Answer a question about the codebase using deterministic code workflow."""
+
+    runner = build_code_workflow_runner()
+
+    result = runner.code_answer(
+        question=question,
+        path=path,
+        max_results=max_results,
+        max_files_to_read=max_files,
+    )
+
+    console.rule("[bold green]Code Answer")
+    console.print(result.final_answer)
+
 if __name__ == "__main__":
     app()

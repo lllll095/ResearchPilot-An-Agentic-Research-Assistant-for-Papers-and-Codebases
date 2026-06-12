@@ -207,6 +207,12 @@ Codebase tools:
 - If code_search returns docs before source files, refine the search with path="src/research_pilot".
 - To read code, use code_read with start_line and max_lines or end_line.
 
+Code answer rule:
+- If the user asks to explain codebase implementation, prefer code_search and code_read first.
+- After collecting enough code evidence, call write_code_answer.
+- Do not answer code implementation questions from memory.
+- For stable codebase QA, the deterministic command is code-answer.
+
 Important action schema rule:
 - Tool names are never action_type.
 - To call a tool, always use action_type="tool_call" and put the tool name in tool_name.
