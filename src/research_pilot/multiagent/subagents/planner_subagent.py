@@ -18,13 +18,13 @@ class PlannerDecision(BaseModel):
 
     task_type: str = Field(
         description=(
-            "Task type selected by the planner. "
-            "Supported values for now: code_answer, general."
+            "Task type selected by the planner. Supported values: "
+            "code_answer, paper_answer, paper_research, general."
         )
     )
     next_agent: str = Field(
         description=(
-            "Next subagent to run. Supported values for now: code, none."
+            "Next subagent to run. Supported values: code, paper, none."
         )
     )
     reason: str = Field(
@@ -149,7 +149,12 @@ Currently available subagents:
   tool implementation, AgentLoop, ToolRuntime, EvidenceStore, TraceStore,
   CodeWorkflowRunner, PaperWorkflowRunner, or other codebase details.
 
-2. none
+2. paper
+- Use this for questions about papers, literature, research topics, academic
+  references, downloaded/indexed papers, evidence from papers, citation-aware
+  paper answers, paper reports, and research summaries.
+
+3. none
 - Use this only when no available specialized subagent can handle the request.
 
 You must return exactly one JSON object.
@@ -160,8 +165,8 @@ Do not include explanations outside JSON.
 JSON schema:
 
 {
-  "task_type": "code_answer | general",
-  "next_agent": "code | none",
+  "task_type": "code_answer | paper_answer | paper_research | general",
+  "next_agent": "code | paper | none",
   "reason": "short reason",
   "rewritten_request": "optional rewritten request"
 }
@@ -169,8 +174,10 @@ JSON schema:
 Rules:
 - For codebase implementation questions, choose task_type="code_answer" and next_agent="code".
 - If the user asks in Chinese about 代码, 源码, 实现, 函数, 类, 模块, 调用链, 工作流, or 在哪里, choose the code agent.
+- For direct questions about already indexed/downloaded papers or paper evidence, choose task_type="paper_answer" and next_agent="paper".
+- For broader requests asking to research a topic, write a report, collect evidence, summarize literature, or find papers if needed, choose task_type="paper_research" and next_agent="paper".
+- If the user asks in Chinese about 论文, 文献, 综述, 研究, 引用, 课题组汇报, or 学术资料, choose the paper agent.
 - If the user uses references like "it", "that", "刚才那个", use the blackboard context to rewrite the request if possible.
-- Do not choose paper/research agents yet because they are not available in this minimal version.
 """
 
     @staticmethod
@@ -197,8 +204,13 @@ Rules:
         task_type = decision.task_type.strip().lower()
         next_agent = decision.next_agent.strip().lower()
 
-        allowed_task_types = {"code_answer", "general"}
-        allowed_next_agents = {"code", "none"}
+        allowed_task_types = {
+            "code_answer",
+            "paper_answer",
+            "paper_research",
+            "general",
+        }
+        allowed_next_agents = {"code", "paper", "none"}
 
         if task_type not in allowed_task_types:
             task_type = "general"
@@ -209,8 +221,14 @@ Rules:
         if task_type == "code_answer":
             next_agent = "code"
 
+        if task_type in {"paper_answer", "paper_research"}:
+            next_agent = "paper"
+
         if next_agent == "code":
             task_type = "code_answer"
+
+        if next_agent == "paper" and task_type not in {"paper_answer", "paper_research"}:
+            task_type = "paper_answer"
 
         return PlannerDecision(
             task_type=task_type,
@@ -275,6 +293,40 @@ Rules:
             "项目里",
         }
 
+        paper_keywords = {
+            "paper",
+            "papers",
+            "literature",
+            "academic",
+            "reference",
+            "references",
+            "citation",
+            "citations",
+            "research",
+            "survey",
+            "review",
+            "report",
+            "article",
+            "publication",
+            "study",
+        }
+
+        chinese_paper_keywords = {
+            "论文",
+            "文献",
+            "综述",
+            "研究",
+            "引用",
+            "报告",
+            "学术",
+            "课题组",
+            "汇报",
+            "资料",
+        }
+
+        # 1. Code fallback first.
+        # This is important because some code-related names may contain words
+        # such as PaperWorkflowRunner. Those should still be routed to code.
         if any(keyword in q for keyword in code_keywords) or any(
             keyword in user_request for keyword in chinese_code_keywords
         ):
@@ -288,6 +340,31 @@ Rules:
                 rewritten_request=user_request,
             )
 
+        # 2. Paper fallback second.
+        if any(keyword in q for keyword in paper_keywords) or any(
+            keyword in user_request for keyword in chinese_paper_keywords
+        ):
+            task_type = "paper_research" if (
+                "report" in q
+                or "survey" in q
+                or "review" in q
+                or "综述" in user_request
+                or "报告" in user_request
+                or "汇报" in user_request
+                or "课题组" in user_request
+            ) else "paper_answer"
+
+            return PlannerDecision(
+                task_type=task_type,
+                next_agent="paper",
+                reason=(
+                    "Fallback selected paper agent because the request appears "
+                    f"to ask about papers or literature. Planner error: {error}"
+                ),
+                rewritten_request=user_request,
+            )
+
+        # 3. General fallback last.
         return PlannerDecision(
             task_type="general",
             next_agent="none",

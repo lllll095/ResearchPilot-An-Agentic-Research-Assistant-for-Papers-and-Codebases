@@ -6,8 +6,13 @@ from research_pilot.conversation.session import ConversationSession
 from research_pilot.core.llm_client import OpenAICompatibleLLMClient
 from research_pilot.core.state import AgentState
 from research_pilot.multiagent import ResearchPilotBlackboard, SubAgentInput
-from research_pilot.multiagent.subagents import CodeSubAgent, PlannerSubAgent
+from research_pilot.multiagent.subagents import (
+    CodeSubAgent,
+    PaperSubAgent,
+    PlannerSubAgent,
+)
 from research_pilot.workflows.code_workflows import CodeWorkflowRunner
+from research_pilot.workflows.paper_workflows import PaperWorkflowRunner
 
 
 class MultiAgentWorkflowRunner:
@@ -17,25 +22,28 @@ class MultiAgentWorkflowRunner:
 
         blackboard
           -> LLM PlannerSubAgent
-          -> CodeSubAgent
+          -> CodeSubAgent or PaperSubAgent
           -> final answer
 
     This version validates the subagent and blackboard architecture before
-    adding PaperSubAgent, WriterSubAgent, and ReviewerSubAgent.
+    adding WriterSubAgent and ReviewerSubAgent.
     """
 
     def __init__(
         self,
         code_workflow_runner: CodeWorkflowRunner,
+        paper_workflow_runner: PaperWorkflowRunner,
         llm_client: OpenAICompatibleLLMClient,
         console: Console | None = None,
     ):
         self.code_workflow_runner = code_workflow_runner
+        self.paper_workflow_runner = paper_workflow_runner
         self.llm_client = llm_client
         self.console = console or Console()
 
         self.planner = PlannerSubAgent(llm_client=self.llm_client)
         self.code_agent = CodeSubAgent(runner=self.code_workflow_runner)
+        self.paper_agent = PaperSubAgent(runner=self.paper_workflow_runner)
 
     def answer(
         self,
@@ -65,10 +73,16 @@ class MultiAgentWorkflowRunner:
                 blackboard=blackboard,
                 decision=decision,
             )
+        elif next_agent == "paper":
+            final_answer = self._run_paper_agent(
+                user_request=user_request,
+                blackboard=blackboard,
+                decision=decision,
+            )
         else:
             final_answer = (
                 "The multi-agent runner could not select a specialized subagent.\n\n"
-                "Current minimal version only supports codebase questions.\n\n"
+                "Current available subagents: code, paper.\n\n"
                 f"Planner decision:\n{planner_output.content}"
             )
 
@@ -111,6 +125,30 @@ class MultiAgentWorkflowRunner:
             )
 
         return code_output.content
+
+    def _run_paper_agent(
+        self,
+        user_request: str,
+        blackboard: ResearchPilotBlackboard,
+        decision: dict,
+    ) -> str:
+        paper_output = self.paper_agent.run(
+            SubAgentInput(
+                blackboard=blackboard,
+                instruction=user_request,
+                metadata={
+                    "planner_decision": decision,
+                },
+            )
+        )
+
+        if not paper_output.success:
+            return (
+                "PaperSubAgent failed.\n\n"
+                f"{paper_output.error}"
+            )
+
+        return paper_output.content
 
     @staticmethod
     def _attach_metadata(

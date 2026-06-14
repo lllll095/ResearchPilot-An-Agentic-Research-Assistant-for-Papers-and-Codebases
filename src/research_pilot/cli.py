@@ -92,10 +92,12 @@ def build_multiagent_workflow_runner(
     """Build minimal multi-agent workflow runner."""
 
     code_runner = build_code_workflow_runner(verbose=verbose)
+    paper_runner = build_paper_workflow_runner(verbose=verbose)
     llm_client = OpenAICompatibleLLMClient.from_settings()
 
     return MultiAgentWorkflowRunner(
         code_workflow_runner=code_runner,
+        paper_workflow_runner=paper_runner,
         llm_client=llm_client,
         console=get_runtime_console(verbose),
     )
