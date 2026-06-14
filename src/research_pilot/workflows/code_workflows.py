@@ -158,6 +158,39 @@ class CodeWorkflowRunner:
 
         return selected
 
+    def _select_files_to_read_from_many(
+        self,
+        search_observations: list[Observation],
+        max_files: int = 5,
+    ) -> list[dict[str, Any]]:
+        """Select files to read from multiple search observations."""
+
+        selected: list[dict[str, Any]] = []
+        seen_files: set[str] = set()
+
+        for obs in search_observations:
+            candidates = self._select_files_to_read(
+                search_obs=obs,
+                max_files=max_files,
+            )
+
+            for item in candidates:
+                file = item.get("file")
+                if not file:
+                    continue
+
+                normalized = file.lower().replace("\\", "/")
+                if normalized in seen_files:
+                    continue
+
+                seen_files.add(normalized)
+                selected.append(item)
+
+                if len(selected) >= max_files:
+                    return selected
+
+        return selected
+
     def _run_tool(
         self,
         run_id: str,
@@ -225,6 +258,52 @@ class CodeWorkflowRunner:
         self.console.print(f"[dim]Trace saved to: {final_path}[/dim]")
 
         return state
+
+    def _extra_search_queries(self, question: str) -> list[str]:
+        """Add targeted searches for known codebase question patterns."""
+
+        q = question.lower()
+
+        queries: list[str] = []
+
+        if "agentloop" in q or "agent loop" in q:
+            queries.extend(
+                [
+                    "class AgentLoop",
+                    "def run AgentLoop",
+                    "AgentLoop ToolRuntime TraceStore AgentState",
+                    "agent_loop.py AgentLoop",
+                ]
+            )
+
+        if "toolruntime" in q or "tool runtime" in q:
+            queries.extend(
+                [
+                    "class ToolRuntime",
+                    "def execute ToolRuntime",
+                    "ToolRuntime execute tool_name tool_input",
+                ]
+            )
+
+        if "codeworkflowrunner" in q or "code workflow" in q:
+            queries.extend(
+                [
+                    "class CodeWorkflowRunner",
+                    "def code_answer CodeWorkflowRunner",
+                    "code_search code_read write_code_answer",
+                ]
+            )
+
+        if "ask" in q and ("route" in q or "routing" in q or "code-answer" in q):
+            queries.extend(
+                [
+                    "IntentType CODE_ANSWER",
+                    "def ask routed.intent_type CODE_ANSWER",
+                    "build_code_workflow_runner code_answer",
+                ]
+            )
+
+        return list(dict.fromkeys(queries))
 
     @staticmethod
     def _new_run_id(prefix: str) -> str:

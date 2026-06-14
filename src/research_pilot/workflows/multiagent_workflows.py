@@ -1,0 +1,124 @@
+# src/research_pilot/workflows/multiagent_workflows.py
+
+from rich.console import Console
+
+from research_pilot.conversation.session import ConversationSession
+from research_pilot.core.llm_client import OpenAICompatibleLLMClient
+from research_pilot.core.state import AgentState
+from research_pilot.multiagent import ResearchPilotBlackboard, SubAgentInput
+from research_pilot.multiagent.subagents import CodeSubAgent, PlannerSubAgent
+from research_pilot.workflows.code_workflows import CodeWorkflowRunner
+
+
+class MultiAgentWorkflowRunner:
+    """Minimal multi-agent workflow runner.
+
+    Current flow:
+
+        blackboard
+          -> LLM PlannerSubAgent
+          -> CodeSubAgent
+          -> final answer
+
+    This version validates the subagent and blackboard architecture before
+    adding PaperSubAgent, WriterSubAgent, and ReviewerSubAgent.
+    """
+
+    def __init__(
+        self,
+        code_workflow_runner: CodeWorkflowRunner,
+        llm_client: OpenAICompatibleLLMClient,
+        console: Console | None = None,
+    ):
+        self.code_workflow_runner = code_workflow_runner
+        self.llm_client = llm_client
+        self.console = console or Console()
+
+        self.planner = PlannerSubAgent(llm_client=self.llm_client)
+        self.code_agent = CodeSubAgent(runner=self.code_workflow_runner)
+
+    def answer(
+        self,
+        user_request: str,
+        session: ConversationSession | None = None,
+    ) -> AgentState:
+        """Run the minimal multi-agent workflow and return an AgentState."""
+
+        blackboard = ResearchPilotBlackboard.from_session(
+            user_request=user_request,
+            session=session,
+        )
+
+        planner_output = self.planner.run(
+            SubAgentInput(
+                blackboard=blackboard,
+                instruction=user_request,
+            )
+        )
+
+        decision = planner_output.updates.get("planner_decision", {})
+        next_agent = decision.get("next_agent")
+
+        if next_agent == "code":
+            final_answer = self._run_code_agent(
+                user_request=user_request,
+                blackboard=blackboard,
+                decision=decision,
+            )
+        else:
+            final_answer = (
+                "The multi-agent runner could not select a specialized subagent.\n\n"
+                "Current minimal version only supports codebase questions.\n\n"
+                f"Planner decision:\n{planner_output.content}"
+            )
+
+        state = AgentState(user_goal=user_request)
+        state.final_answer = final_answer
+
+        self._attach_metadata(
+            state=state,
+            key="blackboard",
+            value=blackboard.model_dump(),
+        )
+        self._attach_metadata(
+            state=state,
+            key="planner_output",
+            value=planner_output.model_dump(),
+        )
+
+        return state
+
+    def _run_code_agent(
+        self,
+        user_request: str,
+        blackboard: ResearchPilotBlackboard,
+        decision: dict,
+    ) -> str:
+        code_output = self.code_agent.run(
+            SubAgentInput(
+                blackboard=blackboard,
+                instruction=user_request,
+                metadata={
+                    "planner_decision": decision,
+                },
+            )
+        )
+
+        if not code_output.success:
+            return (
+                "CodeSubAgent failed.\n\n"
+                f"{code_output.error}"
+            )
+
+        return code_output.content
+
+    @staticmethod
+    def _attach_metadata(
+        state: AgentState,
+        key: str,
+        value,
+    ) -> None:
+        """Attach metadata only if AgentState supports metadata."""
+
+        if hasattr(state, "metadata") and isinstance(state.metadata, dict):
+            state.metadata[key] = value

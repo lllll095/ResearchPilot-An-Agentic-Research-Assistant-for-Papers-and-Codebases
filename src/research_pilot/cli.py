@@ -47,6 +47,7 @@ from research_pilot.conversation.session_store import ConversationSessionStore
 from research_pilot.conversation.summarizer import ConversationSummarizer
 from research_pilot.core.llm_client import OpenAICompatibleLLMClient
 from research_pilot.conversation.turn_memory import TurnMemoryExtractor
+from research_pilot.workflows.multiagent_workflows import MultiAgentWorkflowRunner
 
 app = typer.Typer(help="ResearchPilot command line interface.")
 console = Console()
@@ -82,6 +83,20 @@ def build_code_workflow_runner(verbose: bool = True) -> CodeWorkflowRunner:
     return CodeWorkflowRunner(
         tool_runtime=loop.tool_runtime,
         trace_store=loop.trace_store,
+        console=get_runtime_console(verbose),
+    )
+
+def build_multiagent_workflow_runner(
+    verbose: bool = True,
+) -> MultiAgentWorkflowRunner:
+    """Build minimal multi-agent workflow runner."""
+
+    code_runner = build_code_workflow_runner(verbose=verbose)
+    llm_client = OpenAICompatibleLLMClient.from_settings()
+
+    return MultiAgentWorkflowRunner(
+        code_workflow_runner=code_runner,
+        llm_client=llm_client,
         console=get_runtime_console(verbose),
     )
 
@@ -836,6 +851,38 @@ def session_show(
         if count == 0:
             console.print("[dim](no structured turn memory found)[/dim]")
 
+@app.command("multi-agent")
+def multi_agent(
+    user_input: str,
+    session_id: str | None = typer.Option(
+        None,
+        "--session",
+        "-s",
+        help="Optional conversation session id.",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        help="Show internal workflow logs.",
+    ),
+):
+    """Run the minimal multi-agent workflow."""
+
+    session = None
+
+    if session_id:
+        store = ConversationSessionStore()
+        session = store.load_or_create(session_id)
+
+    runner = build_multiagent_workflow_runner(verbose=verbose)
+
+    result = runner.answer(
+        user_request=user_input,
+        session=session,
+    )
+
+    console.print("\n[bold green]Assistant >[/bold green]")
+    console.print(result.final_answer)
 
 if __name__ == "__main__":
     app()
