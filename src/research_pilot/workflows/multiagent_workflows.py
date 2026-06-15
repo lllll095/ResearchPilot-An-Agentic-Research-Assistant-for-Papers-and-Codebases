@@ -11,6 +11,7 @@ from research_pilot.multiagent.subagents import (
     PaperSubAgent,
     PlannerSubAgent,
     ReviewerSubAgent,
+    WriterSubAgent,
 )
 from research_pilot.workflows.code_workflows import CodeWorkflowRunner
 from research_pilot.workflows.paper_workflows import PaperWorkflowRunner
@@ -46,6 +47,7 @@ class MultiAgentWorkflowRunner:
         self.code_agent = CodeSubAgent(runner=self.code_workflow_runner)
         self.paper_agent = PaperSubAgent(runner=self.paper_workflow_runner)
         self.reviewer = ReviewerSubAgent(llm_client=self.llm_client)
+        self.writer = WriterSubAgent(llm_client=self.llm_client)
 
     def answer(
         self,
@@ -97,6 +99,22 @@ class MultiAgentWorkflowRunner:
             candidate_answer=final_answer,
             source_agent=source_agent,
         )
+
+        writer_output = None
+
+        review_result = review_output.updates.get("review_result", {})
+
+        if not review_result.get("passed", True):
+            writer_output = self._run_writer(
+                blackboard=blackboard,
+                candidate_answer=final_answer,
+                review_result=review_result,
+                source_agent=source_agent,
+            )
+
+            if writer_output.success and writer_output.content.strip():
+                final_answer = writer_output.content
+
         state = AgentState(user_goal=user_request)
         state.final_answer = final_answer
 
@@ -115,6 +133,13 @@ class MultiAgentWorkflowRunner:
             key="review_output",
             value=review_output.model_dump(),
         )
+
+        if writer_output is not None:
+            self._attach_metadata(
+                state=state,
+                key="writer_output",
+                value=writer_output.model_dump(),
+            )
 
         return state
 
@@ -183,6 +208,27 @@ class MultiAgentWorkflowRunner:
                 instruction="Review the candidate answer.",
                 metadata={
                     "candidate_answer": candidate_answer,
+                    "source_agent": source_agent,
+                },
+            )
+        )
+
+    def _run_writer(
+        self,
+        blackboard: ResearchPilotBlackboard,
+        candidate_answer: str,
+        review_result: dict,
+        source_agent: str,
+    ):
+        """Run WriterSubAgent once when review fails."""
+
+        return self.writer.run(
+            SubAgentInput(
+                blackboard=blackboard,
+                instruction="Rewrite the candidate answer using reviewer feedback.",
+                metadata={
+                    "candidate_answer": candidate_answer,
+                    "review_result": review_result,
                     "source_agent": source_agent,
                 },
             )

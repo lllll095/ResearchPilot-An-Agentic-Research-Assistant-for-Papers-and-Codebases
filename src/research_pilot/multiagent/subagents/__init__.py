@@ -10,6 +10,7 @@ from research_pilot.multiagent.subagents.reviewer_subagent import (
     ReviewerSubAgent,
     ReviewResult,
 )
+from research_pilot.multiagent.subagents.writer_subagent import WriterSubAgent
 
 __all__ = [
     "CodeSubAgent",
@@ -18,4 +19,5 @@ __all__ = [
     "PlannerSubAgent",
     "ReviewerSubAgent",
     "ReviewResult",
+    "WriterSubAgent",
 ]
