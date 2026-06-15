@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Any
 
 from research_pilot.core.action import AgentAction
 from research_pilot.core.evidence import EvidenceStore
@@ -24,6 +25,7 @@ class AgentState(BaseModel):
     evidence_store: EvidenceStore = Field(default_factory=EvidenceStore)
     todo_reminder: str | None = None
     final_answer: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     def add_step(self, step: AgentStep) -> None:
         self.steps.append(step)

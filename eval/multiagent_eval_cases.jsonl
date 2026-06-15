@@ -1,0 +1,3 @@
+{"case_id":"ma_code_001","question":"AgentLoop 是怎么实现的？","expected_next_agent":"code","required_terms":["AgentLoop","ToolRuntime","AgentState"],"min_answer_chars":300}
+{"case_id":"ma_code_002","question":"ToolRuntime 是怎么执行工具的？","expected_next_agent":"code","required_terms":["ToolRuntime","tool","execute"],"min_answer_chars":300}
+{"case_id":"ma_paper_001","question":"基于已有论文证据，agentic RAG 的架构是什么？","expected_next_agent":"paper","required_terms":["agentic RAG"],"min_answer_chars":100}

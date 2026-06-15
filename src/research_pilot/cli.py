@@ -48,6 +48,7 @@ from research_pilot.conversation.summarizer import ConversationSummarizer
 from research_pilot.core.llm_client import OpenAICompatibleLLMClient
 from research_pilot.conversation.turn_memory import TurnMemoryExtractor
 from research_pilot.workflows.multiagent_workflows import MultiAgentWorkflowRunner
+from research_pilot.evaluation.multiagent_eval import MultiAgentWorkflowEvaluator
 
 app = typer.Typer(help="ResearchPilot command line interface.")
 console = Console()
@@ -898,6 +899,49 @@ def multi_agent(
 
     console.print("\n[bold green]Assistant >[/bold green]")
     console.print(result.final_answer)
+
+@app.command("eval-multi-agent")
+def eval_multi_agent(
+    cases_path: Path = typer.Option(
+        Path("eval/multiagent_eval_cases.jsonl"),
+        "--cases",
+        help="Path to JSONL multi-agent evaluation cases.",
+    ),
+    max_cases: int | None = typer.Option(
+        None,
+        "--max-cases",
+        help="Optional maximum number of cases to run.",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        help="Show internal workflow logs.",
+    ),
+):
+    """Evaluate multi-agent workflow with rule-based checks."""
+
+    runner = build_multiagent_workflow_runner(verbose=verbose)
+
+    output_dir = Path(settings.workspace) / "eval_runs"
+
+    evaluator = MultiAgentWorkflowEvaluator(
+        runner=runner,
+        output_dir=output_dir,
+    )
+
+    cases = evaluator.load_cases(cases_path)
+    summary = evaluator.run_cases(
+        cases=cases,
+        max_cases=max_cases,
+    )
+
+    console.rule("[bold green]Multi-agent Evaluation Summary")
+    console.print(f"Total: {summary.total}")
+    console.print(f"Passed: {summary.passed}")
+    console.print(f"Failed: {summary.failed}")
+    console.print(f"Pass rate: {summary.pass_rate:.1%}")
+    console.print(f"Results: {summary.results_path}")
+    console.print(f"Summary: {summary.summary_path}")
 
 if __name__ == "__main__":
     app()
