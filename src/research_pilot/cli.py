@@ -175,6 +175,24 @@ def print_multiagent_debug(
             payload=metadata.get("blackboard"),
         )
 
+def print_graph_debug(result) -> None:
+    """Print graph workflow debug information."""
+
+    metadata = getattr(result, "metadata", None)
+
+    if not isinstance(metadata, dict):
+        console.print("[dim]No metadata found.[/dim]")
+        return
+
+    visited_nodes = metadata.get("visited_nodes")
+
+    if not visited_nodes:
+        graph_state = metadata.get("graph_state") or {}
+        if isinstance(graph_state, dict):
+            visited_nodes = graph_state.get("visited_nodes")
+
+    console.rule("[bold blue]Graph Visited Nodes")
+    console.print(visited_nodes or "[dim](empty)[/dim]")
 
 def _print_debug_json(
     title: str,
@@ -225,7 +243,6 @@ def build_policy(policy_name: str, tool_runtime=None):
         )
 
     raise ValueError(f"Unknown policy: {policy_name}. Use 'mock' or 'llm'.")
-
 
 def build_runtime(policy_name: str = "mock", verbose: bool = True) -> AgentLoop:
     workspace = Path(settings.workspace)
@@ -606,6 +623,16 @@ def chat(
         "--multi-agent",
         help="Use the multi-agent planner/subagent workflow.",
     ),
+    use_graph: bool = typer.Option(
+        False,
+        "--graph",
+        help="Use graph-based multi-agent workflow. Only works with --multi-agent.",
+    ),
+    show_graph: bool = typer.Option(
+        False,
+        "--show-graph",
+        help="Show graph visited nodes in graph multi-agent mode.",
+    ),
     show_plan: bool = typer.Option(
         False,
         "--show-plan",
@@ -650,6 +677,19 @@ def chat(
         max_messages=max_history,
         max_turn_memories=4,
     )
+
+    multiagent_runner = None
+
+    if multi_agent:
+        if use_graph:
+            multiagent_runner = build_multiagent_graph_workflow_runner(
+                verbose=verbose,
+            )
+        else:
+            multiagent_runner = build_multiagent_workflow_runner(
+                verbose=verbose,
+            )
+
     turn_memory_extractor = TurnMemoryExtractor()
     summarizer = None
 
@@ -660,7 +700,19 @@ def chat(
 
     console.print("[bold green]ResearchPilot chat started.[/bold green]")
     console.print(f"[dim]Session: {session.session_id}[/dim]")
-    mode_name = "multi-agent" if multi_agent else "single-workflow"
+
+    if use_graph and not multi_agent:
+        console.print(
+            "[yellow]--graph was provided without --multi-agent, so it will be ignored.[/yellow]"
+        )
+
+    if multi_agent and use_graph:
+        mode_name = "graph-multi-agent"
+    elif multi_agent:
+        mode_name = "multi-agent"
+    else:
+        mode_name = "single-workflow"
+
     console.print(f"[dim]Mode: {mode_name}[/dim]")
     console.print("[dim]Type 'exit', 'quit', 'q', or '退出' to stop.[/dim]")
 
@@ -696,9 +748,10 @@ def chat(
 
         try:
             if multi_agent:
-                runner = build_multiagent_workflow_runner(verbose=verbose)
+                if multiagent_runner is None:
+                    raise RuntimeError("Multi-agent runner was not initialized.")
 
-                result = runner.answer(
+                result = multiagent_runner.answer(
                     user_request=contextual_input,
                     session=session,
                 )
@@ -732,6 +785,14 @@ def chat(
         if (
             result is not None
             and multi_agent
+            and use_graph
+            and show_graph
+        ):
+            print_graph_debug(result)
+
+        if (
+            result is not None
+            and multi_agent
             and any(
                 [
                     show_plan,
@@ -758,7 +819,9 @@ def chat(
                 user_request=user_message,
                 session_id=session.session_id,
             )
-            console.print(f"[dim]Multi-agent trace report saved to: {report_path}[/dim]")
+
+            report_kind = "Graph multi-agent" if use_graph else "Multi-agent"
+            console.print(f"[dim]{report_kind} trace report saved to: {report_path}[/dim]")
 
         assistant_metadata = {
             "mode": "chat",
