@@ -1,7 +1,9 @@
 from pathlib import Path
 from io import StringIO
+import json
 
 import typer
+from typing import Any
 from rich.console import Console
 
 from research_pilot.agents.llm_agent import LLMAgentPolicy
@@ -101,6 +103,78 @@ def build_multiagent_workflow_runner(
         paper_workflow_runner=paper_runner,
         llm_client=llm_client,
         console=get_runtime_console(verbose),
+    )
+
+def print_multiagent_debug(
+    result,
+    show_plan: bool = False,
+    show_review: bool = False,
+    show_retry: bool = False,
+    show_writer: bool = False,
+    show_blackboard: bool = False,
+) -> None:
+    """Print selected multi-agent debug metadata."""
+
+    metadata = getattr(result, "metadata", None)
+
+    if not isinstance(metadata, dict) or not metadata:
+        console.print("[dim]No multi-agent metadata found.[/dim]")
+        return
+
+    if show_plan:
+        _print_debug_json(
+            title="Planner Output",
+            payload=metadata.get("planner_output"),
+        )
+
+    if show_review:
+        _print_debug_json(
+            title="Reviewer Output",
+            payload=metadata.get("review_output"),
+        )
+
+    if show_retry:
+        _print_debug_json(
+            title="Specialist Retry Outputs",
+            payload=metadata.get("specialist_retry_outputs"),
+        )
+        _print_debug_json(
+            title="Specialist Retry Review Outputs",
+            payload=metadata.get("specialist_retry_review_outputs"),
+        )
+
+    if show_writer:
+        _print_debug_json(
+            title="Writer Output",
+            payload=metadata.get("writer_output"),
+        )
+
+    if show_blackboard:
+        _print_debug_json(
+            title="Blackboard",
+            payload=metadata.get("blackboard"),
+        )
+
+
+def _print_debug_json(
+    title: str,
+    payload: Any,
+) -> None:
+    """Pretty-print a debug payload as JSON."""
+
+    console.rule(f"[bold blue]{title}")
+
+    if payload is None:
+        console.print("[dim](empty)[/dim]")
+        return
+
+    console.print(
+        json.dumps(
+            payload,
+            indent=2,
+            ensure_ascii=False,
+            default=str,
+        )
     )
 
 def build_policy(policy_name: str, tool_runtime=None):
@@ -467,11 +541,6 @@ def chat(
         "-s",
         help="Conversation session id.",
     ),
-    multi_agent: bool = typer.Option(
-        False,
-        "--multi-agent",
-        help="Use the multi-agent planner/subagent workflow.",
-    ),
     max_history: int = typer.Option(
         8,
         "--max-history",
@@ -511,6 +580,36 @@ def chat(
         4,
         "--summary-min-new-messages",
         help="Minimum new old messages required before updating the summary.",
+    ),
+    multi_agent: bool = typer.Option(
+        False,
+        "--multi-agent",
+        help="Use the multi-agent planner/subagent workflow.",
+    ),
+    show_plan: bool = typer.Option(
+        False,
+        "--show-plan",
+        help="Show planner output in multi-agent mode.",
+    ),
+    show_review: bool = typer.Option(
+        False,
+        "--show-review",
+        help="Show reviewer output in multi-agent mode.",
+    ),
+    show_retry: bool = typer.Option(
+        False,
+        "--show-retry",
+        help="Show specialist retry outputs in multi-agent mode.",
+    ),
+    show_writer: bool = typer.Option(
+        False,
+        "--show-writer",
+        help="Show writer output in multi-agent mode.",
+    ),
+    show_blackboard: bool = typer.Option(
+        False,
+        "--show-blackboard",
+        help="Show blackboard metadata in multi-agent mode.",
     ),
     verbose: bool = typer.Option(
         False,
@@ -604,6 +703,28 @@ def chat(
 
         console.print("\n[bold green]Assistant >[/bold green]")
         console.print(answer)
+
+        if (
+            result is not None
+            and multi_agent
+            and any(
+                [
+                    show_plan,
+                    show_review,
+                    show_retry,
+                    show_writer,
+                    show_blackboard,
+                ]
+            )
+        ):
+            print_multiagent_debug(
+                result=result,
+                show_plan=show_plan,
+                show_review=show_review,
+                show_retry=show_retry,
+                show_writer=show_writer,
+                show_blackboard=show_blackboard,
+            )
 
         assistant_metadata = {
             "mode": "chat",
@@ -881,8 +1002,33 @@ def multi_agent(
         "--verbose",
         help="Show internal workflow logs.",
     ),
+    show_plan: bool = typer.Option(
+        False,
+        "--show-plan",
+        help="Show planner output.",
+    ),
+    show_review: bool = typer.Option(
+        False,
+        "--show-review",
+        help="Show reviewer output.",
+    ),
+    show_retry: bool = typer.Option(
+        False,
+        "--show-retry",
+        help="Show specialist retry outputs.",
+    ),
+    show_writer: bool = typer.Option(
+        False,
+        "--show-writer",
+        help="Show writer output when rewrite is triggered.",
+    ),
+    show_blackboard: bool = typer.Option(
+        False,
+        "--show-blackboard",
+        help="Show final blackboard metadata.",
+    ),
 ):
-    """Run the minimal multi-agent workflow."""
+    """Run the multi-agent workflow."""
 
     session = None
 
@@ -899,6 +1045,24 @@ def multi_agent(
 
     console.print("\n[bold green]Assistant >[/bold green]")
     console.print(result.final_answer)
+
+    if any(
+        [
+            show_plan,
+            show_review,
+            show_retry,
+            show_writer,
+            show_blackboard,
+        ]
+    ):
+        print_multiagent_debug(
+            result=result,
+            show_plan=show_plan,
+            show_review=show_review,
+            show_retry=show_retry,
+            show_writer=show_writer,
+            show_blackboard=show_blackboard,
+        )
 
 @app.command("eval-multi-agent")
 def eval_multi_agent(
