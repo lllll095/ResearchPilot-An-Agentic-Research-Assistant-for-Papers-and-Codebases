@@ -6,10 +6,16 @@ from research_pilot.multiagent.subagents.planner_subagent import (
     PlannerDecision,
     PlannerSubAgent,
 )
+from research_pilot.multiagent.subagents.reviewer_subagent import (
+    ReviewerSubAgent,
+    ReviewResult,
+)
 
 __all__ = [
     "CodeSubAgent",
     "PaperSubAgent",
     "PlannerDecision",
     "PlannerSubAgent",
+    "ReviewerSubAgent",
+    "ReviewResult",
 ]

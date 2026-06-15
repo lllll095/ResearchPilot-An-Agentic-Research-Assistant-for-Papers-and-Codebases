@@ -10,6 +10,7 @@ from research_pilot.multiagent.subagents import (
     CodeSubAgent,
     PaperSubAgent,
     PlannerSubAgent,
+    ReviewerSubAgent,
 )
 from research_pilot.workflows.code_workflows import CodeWorkflowRunner
 from research_pilot.workflows.paper_workflows import PaperWorkflowRunner
@@ -44,6 +45,7 @@ class MultiAgentWorkflowRunner:
         self.planner = PlannerSubAgent(llm_client=self.llm_client)
         self.code_agent = CodeSubAgent(runner=self.code_workflow_runner)
         self.paper_agent = PaperSubAgent(runner=self.paper_workflow_runner)
+        self.reviewer = ReviewerSubAgent(llm_client=self.llm_client)
 
     def answer(
         self,
@@ -67,18 +69,22 @@ class MultiAgentWorkflowRunner:
         decision = planner_output.updates.get("planner_decision", {})
         next_agent = decision.get("next_agent")
 
+        source_agent = "none"
+
         if next_agent == "code":
             final_answer = self._run_code_agent(
                 user_request=user_request,
                 blackboard=blackboard,
                 decision=decision,
             )
+            source_agent = "code"
         elif next_agent == "paper":
             final_answer = self._run_paper_agent(
                 user_request=user_request,
                 blackboard=blackboard,
                 decision=decision,
             )
+            source_agent = "paper"
         else:
             final_answer = (
                 "The multi-agent runner could not select a specialized subagent.\n\n"
@@ -86,6 +92,11 @@ class MultiAgentWorkflowRunner:
                 f"Planner decision:\n{planner_output.content}"
             )
 
+        review_output = self._run_reviewer(
+            blackboard=blackboard,
+            candidate_answer=final_answer,
+            source_agent=source_agent,
+        )
         state = AgentState(user_goal=user_request)
         state.final_answer = final_answer
 
@@ -98,6 +109,11 @@ class MultiAgentWorkflowRunner:
             state=state,
             key="planner_output",
             value=planner_output.model_dump(),
+        )
+        self._attach_metadata(
+            state=state,
+            key="review_output",
+            value=review_output.model_dump(),
         )
 
         return state
@@ -149,6 +165,28 @@ class MultiAgentWorkflowRunner:
             )
 
         return paper_output.content
+
+    def _run_reviewer(
+        self,
+        blackboard: ResearchPilotBlackboard,
+        candidate_answer: str,
+        source_agent: str,
+    ):
+        """Run ReviewerSubAgent on the candidate answer.
+
+        The first version records review results but does not rewrite the answer.
+        """
+
+        return self.reviewer.run(
+            SubAgentInput(
+                blackboard=blackboard,
+                instruction="Review the candidate answer.",
+                metadata={
+                    "candidate_answer": candidate_answer,
+                    "source_agent": source_agent,
+                },
+            )
+        )
 
     @staticmethod
     def _attach_metadata(
