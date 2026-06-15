@@ -51,6 +51,10 @@ from research_pilot.core.llm_client import OpenAICompatibleLLMClient
 from research_pilot.conversation.turn_memory import TurnMemoryExtractor
 from research_pilot.workflows.multiagent_workflows import MultiAgentWorkflowRunner
 from research_pilot.evaluation.multiagent_eval import MultiAgentWorkflowEvaluator
+from research_pilot.multiagent.trace_report import MultiAgentTraceReportWriter
+from research_pilot.workflows.multiagent_graph_workflows import (
+    MultiAgentGraphWorkflowRunner,
+)
 
 app = typer.Typer(help="ResearchPilot command line interface.")
 console = Console()
@@ -99,6 +103,22 @@ def build_multiagent_workflow_runner(
     llm_client = OpenAICompatibleLLMClient.from_settings()
 
     return MultiAgentWorkflowRunner(
+        code_workflow_runner=code_runner,
+        paper_workflow_runner=paper_runner,
+        llm_client=llm_client,
+        console=get_runtime_console(verbose),
+    )
+
+def build_multiagent_graph_workflow_runner(
+    verbose: bool = True,
+) -> MultiAgentGraphWorkflowRunner:
+    """Build graph-based multi-agent workflow runner."""
+
+    code_runner = build_code_workflow_runner(verbose=verbose)
+    paper_runner = build_paper_workflow_runner(verbose=verbose)
+    llm_client = OpenAICompatibleLLMClient.from_settings()
+
+    return MultiAgentGraphWorkflowRunner(
         code_workflow_runner=code_runner,
         paper_workflow_runner=paper_runner,
         llm_client=llm_client,
@@ -611,6 +631,11 @@ def chat(
         "--show-blackboard",
         help="Show blackboard metadata in multi-agent mode.",
     ),
+    save_trace_report: bool = typer.Option(
+        False,
+        "--save-trace-report",
+        help="Save a markdown trace report for each multi-agent chat turn.",
+    ),
     verbose: bool = typer.Option(
         False,
         "--verbose",
@@ -725,6 +750,15 @@ def chat(
                 show_writer=show_writer,
                 show_blackboard=show_blackboard,
             )
+
+        if result is not None and multi_agent and save_trace_report:
+            report_writer = MultiAgentTraceReportWriter()
+            report_path = report_writer.save(
+                state=result,
+                user_request=user_message,
+                session_id=session.session_id,
+            )
+            console.print(f"[dim]Multi-agent trace report saved to: {report_path}[/dim]")
 
         assistant_metadata = {
             "mode": "chat",
@@ -1027,6 +1061,11 @@ def multi_agent(
         "--show-blackboard",
         help="Show final blackboard metadata.",
     ),
+    save_trace_report: bool = typer.Option(
+        False,
+        "--save-trace-report",
+        help="Save a markdown trace report for this multi-agent run.",
+    ),
 ):
     """Run the multi-agent workflow."""
 
@@ -1063,6 +1102,15 @@ def multi_agent(
             show_writer=show_writer,
             show_blackboard=show_blackboard,
         )
+
+    if save_trace_report:
+        report_writer = MultiAgentTraceReportWriter()
+        report_path = report_writer.save(
+            state=result,
+            user_request=user_input,
+            session_id=session_id,
+        )
+        console.print(f"[dim]Multi-agent trace report saved to: {report_path}[/dim]")
 
 @app.command("eval-multi-agent")
 def eval_multi_agent(
@@ -1106,6 +1154,107 @@ def eval_multi_agent(
     console.print(f"Pass rate: {summary.pass_rate:.1%}")
     console.print(f"Results: {summary.results_path}")
     console.print(f"Summary: {summary.summary_path}")
+
+@app.command("graph-multi-agent")
+def graph_multi_agent(
+    user_input: str,
+    session_id: str | None = typer.Option(
+        None,
+        "--session",
+        "-s",
+        help="Optional conversation session id.",
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        help="Show internal workflow logs.",
+    ),
+    show_plan: bool = typer.Option(
+        False,
+        "--show-plan",
+        help="Show planner output.",
+    ),
+    show_review: bool = typer.Option(
+        False,
+        "--show-review",
+        help="Show reviewer output.",
+    ),
+    show_retry: bool = typer.Option(
+        False,
+        "--show-retry",
+        help="Show specialist retry outputs.",
+    ),
+    show_writer: bool = typer.Option(
+        False,
+        "--show-writer",
+        help="Show writer output when rewrite is triggered.",
+    ),
+    show_blackboard: bool = typer.Option(
+        False,
+        "--show-blackboard",
+        help="Show final blackboard metadata.",
+    ),
+    save_trace_report: bool = typer.Option(
+        False,
+        "--save-trace-report",
+        help="Save a markdown trace report for this graph multi-agent run.",
+    ),
+    show_graph: bool = typer.Option(
+        False,
+        "--show-graph",
+        help="Show graph visited nodes.",
+    ),
+):
+    """Run the graph-based multi-agent workflow."""
+
+    session = None
+
+    if session_id:
+        store = ConversationSessionStore()
+        session = store.load_or_create(session_id)
+
+    runner = build_multiagent_graph_workflow_runner(verbose=verbose)
+
+    result = runner.answer(
+        user_request=user_input,
+        session=session,
+    )
+
+    console.print("\n[bold green]Assistant >[/bold green]")
+    console.print(result.final_answer)
+
+    if show_graph:
+        metadata = getattr(result, "metadata", {})
+        visited_nodes = metadata.get("visited_nodes")
+        console.rule("[bold blue]Graph Visited Nodes")
+        console.print(visited_nodes or "[dim](empty)[/dim]")
+
+    if any(
+        [
+            show_plan,
+            show_review,
+            show_retry,
+            show_writer,
+            show_blackboard,
+        ]
+    ):
+        print_multiagent_debug(
+            result=result,
+            show_plan=show_plan,
+            show_review=show_review,
+            show_retry=show_retry,
+            show_writer=show_writer,
+            show_blackboard=show_blackboard,
+        )
+
+    if save_trace_report:
+        report_writer = MultiAgentTraceReportWriter()
+        report_path = report_writer.save(
+            state=result,
+            user_request=user_input,
+            session_id=session_id,
+        )
+        console.print(f"[dim]Graph multi-agent trace report saved to: {report_path}[/dim]")
 
 if __name__ == "__main__":
     app()
