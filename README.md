@@ -336,6 +336,105 @@ research-pilot eval-multi-agent
 
 ---
 
+## 10. FastAPI Service Demo
+
+ResearchPilot also provides a lightweight FastAPI service layer, which turns the original CLI-based agent system into an HTTP-callable backend service.
+
+This is useful for:
+
+- integrating ResearchPilot with a frontend interface;
+- testing agent workflows through HTTP APIs;
+- exposing the graph-based multi-agent workflow as a backend service;
+- demonstrating that the project can be extended from a local CLI tool to a deployable AI application service.
+
+### 10.1 Start the API server
+
+```bash
+uvicorn research_pilot.api.server:app --host 127.0.0.1 --port 8000 --reload
+````
+
+After the server starts, open the interactive API documentation:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### 10.2 Health check
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "service": "research-pilot-api"
+}
+```
+
+### 10.3 Chat endpoint
+
+The `/chat` endpoint runs the graph-based multi-agent workflow.
+
+```bash
+curl -X POST "http://127.0.0.1:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "RAG 和 Agent 的区别是什么？",
+    "use_multi_agent": true,
+    "save_trace_report": false
+  }'
+```
+
+Example response:
+
+```json
+{
+  "answer": "...",
+  "mode": "graph-multi-agent",
+  "metadata": {
+    "visited_nodes": [
+      "prepare",
+      "planner",
+      "paper",
+      "reviewer",
+      "final"
+    ]
+  }
+}
+```
+
+### 10.4 Paper research endpoint
+
+The `/paper-research` endpoint directly runs the adaptive paper research workflow.
+
+```bash
+curl -X POST "http://127.0.0.1:8000/paper-research" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "基于已有论文证据，agentic RAG 的架构是什么？",
+    "max_papers": 3,
+    "min_sources": 3,
+    "force_download": false,
+    "save_report": false
+  }'
+```
+
+### 10.5 API endpoints
+
+| Method | Endpoint          | Description                                        |
+| ------ | ----------------- | -------------------------------------------------- |
+| GET    | `/health`         | Check whether the API service is running.          |
+| POST   | `/chat`           | Run the graph-based multi-agent chat workflow.     |
+| POST   | `/paper-research` | Run the adaptive paper research workflow directly. |
+
+```
+```
+
+---
+
 ## 10. 推荐 Demo
 
 ### Demo 1：代码理解

@@ -307,7 +307,99 @@ AgentLoop 是怎么实现的？
 
 ---
 
-## Demo 6：Trace Report
+````markdown
+## Demo 6：FastAPI Service
+
+This demo shows that ResearchPilot can be used not only as a CLI tool, but also as an HTTP-callable backend service.
+
+### Start the service
+
+```bash
+uvicorn research_pilot.api.server:app --host 127.0.0.1 --port 8000 --reload
+````
+
+Open:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### Test `/health`
+
+Use the Swagger UI or run:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "ok",
+  "service": "research-pilot-api"
+}
+```
+
+### Test `/chat`
+
+Request body:
+
+```json
+{
+  "message": "RAG 和 Agent 的区别是什么？",
+  "use_multi_agent": true,
+  "save_trace_report": false
+}
+```
+
+Expected behavior:
+
+```text
+The request is routed through the graph-based multi-agent workflow.
+The returned metadata should include visited graph nodes such as:
+prepare → planner → paper/general → reviewer → final
+```
+
+### Test `/paper-research`
+
+Request body:
+
+```json
+{
+  "question": "基于已有论文证据，agentic RAG 的架构是什么？",
+  "max_papers": 3,
+  "min_sources": 3,
+  "force_download": false,
+  "save_report": false
+}
+```
+
+Expected behavior:
+
+```text
+The request directly runs the adaptive paper research workflow.
+It performs local RAG retrieval, evidence checking, optional paper download,
+paper indexing, retrieval retry, and evidence-grounded answer generation.
+```
+
+### Why this demo matters
+
+This demo shows that ResearchPilot has been upgraded from a local CLI agent system to a service-oriented AI application prototype.
+
+The API layer makes it possible to integrate ResearchPilot with:
+
+* frontend applications;
+* internal research tools;
+* web-based demos;
+* deployment services;
+* other agent systems.
+
+```
+```
+---
+
+## Demo 7：Trace Report
 
 ### 目标
 
