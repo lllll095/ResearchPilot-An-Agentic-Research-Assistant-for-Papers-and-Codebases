@@ -93,3 +93,29 @@ class AgentLoop:
         self.console.print(f"[dim]Trace saved to: {final_path}[/dim]")
 
         return state
+    def run_stream(self, user_goal: str):
+        """Run agent loop as generator, yielding events for streaming."""
+        state = AgentState(user_goal=user_goal)
+        run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.hook_manager.on_run_start(state)
+        for step_id in range(1, self.max_steps + 1):
+            context = self.context_manager.build_context(state, self.tool_runtime)
+            action = self.policy.next_action(state, context)
+            action = self.hook_manager.before_action(state, action)
+            step = AgentStep(step_id=step_id, action=action)
+            if action.action_type == ActionType.FINAL_ANSWER:
+                state.final_answer = action.final_answer or ""
+                state.add_step(step)
+                yield ("final_answer", action.final_answer, state)
+                break
+            if action.action_type == ActionType.TOOL_CALL:
+                yield ("action", action, None)
+                observation = self.tool_runtime.execute(action, state=state)
+                step.observation = observation
+                state.add_step(step)
+                yield ("tool_result", observation, None)
+        else:
+            state.final_answer = "Agent stopped because max_steps was reached."
+            yield ("final_answer", state.final_answer, state)
+        self.hook_manager.on_run_end(state)
+        self.trace_store.save_final_state(run_id, state)

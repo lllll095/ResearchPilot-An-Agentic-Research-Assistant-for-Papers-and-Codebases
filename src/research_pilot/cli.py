@@ -8,53 +8,54 @@ from rich.console import Console
 
 from research_pilot.agents.llm_agent import LLMAgentPolicy
 from research_pilot.agents.mock_agent import MockAgentPolicy
+from research_pilot.agents.research_planner_agent import ResearchPlannerAgent
 from research_pilot.config import settings
+
+from research_pilot.conversation.conversation_context import ConversationContextBuilder
+from research_pilot.conversation.session_store import ConversationSessionStore
+from research_pilot.conversation.summarizer import ConversationSummarizer
+from research_pilot.conversation.turn_memory import TurnMemoryExtractor
+
 from research_pilot.core.agent_loop import AgentLoop, AgentPolicy
 from research_pilot.core.context_manager import ContextManager
 from research_pilot.core.hooks import HookManager
+from research_pilot.core.llm_client import OpenAICompatibleLLMClient
 from research_pilot.core.permission import PermissionChecker
+from research_pilot.core.state import AgentState
 from research_pilot.core.tool_runtime import ToolRuntime
 from research_pilot.core.trace import TraceStore
-from research_pilot.tools.file_tools import ListFilesTool, ReadFileTool
-from research_pilot.tools.note_tool import SaveNoteTool
-from research_pilot.tools.shell_tool import ShellTool
-from research_pilot.tools.todo_tool import TodoReadTool, TodoWriteTool
-from research_pilot.agents.research_planner_agent import ResearchPlannerAgent
-from research_pilot.core.llm_client import OpenAICompatibleLLMClient
-from research_pilot.core.state import AgentState
-from research_pilot.tools.report_tool import SaveReportTool
-from research_pilot.tools.web_search_tool import MockWebSearchTool, TavilyWebSearchTool
-from research_pilot.tools.paper_tools import ArxivPaperDownloadTool, ArxivPaperSearchTool
-from research_pilot.tools.summarize_tool import SummarizeEvidenceTool
+
+from research_pilot.evaluation.code_eval import CodeWorkflowEvaluator
+from research_pilot.evaluation.llm_judge import PaperAnswerLLMJudge
+from research_pilot.evaluation.multiagent_eval import MultiAgentWorkflowEvaluator
+from research_pilot.evaluation.paper_eval import PaperWorkflowEvaluator
+
+from research_pilot.multiagent.trace_report import MultiAgentTraceReportWriter
+
+from research_pilot.tools.code_answer_tool import WriteCodeAnswerTool
+from research_pilot.tools.codebase_tools import CodeMapTool, CodeReadTool, CodeSearchTool
 from research_pilot.tools.engineered_rag_tool import (
     EngineeredRAGAnswerTool,
     EngineeredRAGIndexTool,
     EngineeredRAGSearchTool,
 )
 from research_pilot.tools.evidence_answer_tool import WriteEvidenceAnswerTool
-from research_pilot.workflows.paper_workflows import PaperWorkflowRunner
-from research_pilot.workflows.intent_router import IntentRouter, IntentType
-from research_pilot.evaluation.paper_eval import PaperWorkflowEvaluator
-from research_pilot.evaluation.llm_judge import PaperAnswerLLMJudge
-from research_pilot.tools.codebase_tools import (
-    CodeMapTool,
-    CodeReadTool,
-    CodeSearchTool,
-)
-from research_pilot.tools.code_answer_tool import WriteCodeAnswerTool
+from research_pilot.tools.file_tools import ListFilesTool, ReadFileTool
+from research_pilot.tools.note_tool import SaveNoteTool
+from research_pilot.tools.paper_tools import ArxivPaperDownloadTool, ArxivPaperSearchTool
+from research_pilot.tools.report_tool import SaveReportTool
+from research_pilot.tools.shell_tool import ShellTool
+from research_pilot.tools.summarize_tool import SummarizeEvidenceTool
+from research_pilot.tools.todo_tool import TodoReadTool, TodoWriteTool
+from research_pilot.tools.web_search_tool import MockWebSearchTool, TavilyWebSearchTool
+
 from research_pilot.workflows.code_workflows import CodeWorkflowRunner
-from research_pilot.evaluation.code_eval import CodeWorkflowEvaluator
-from research_pilot.conversation.conversation_context import ConversationContextBuilder
-from research_pilot.conversation.session_store import ConversationSessionStore
-from research_pilot.conversation.summarizer import ConversationSummarizer
-from research_pilot.core.llm_client import OpenAICompatibleLLMClient
-from research_pilot.conversation.turn_memory import TurnMemoryExtractor
-from research_pilot.workflows.multiagent_workflows import MultiAgentWorkflowRunner
-from research_pilot.evaluation.multiagent_eval import MultiAgentWorkflowEvaluator
-from research_pilot.multiagent.trace_report import MultiAgentTraceReportWriter
+from research_pilot.workflows.intent_router import IntentRouter, IntentType
 from research_pilot.workflows.multiagent_graph_workflows import (
     MultiAgentGraphWorkflowRunner,
 )
+from research_pilot.workflows.multiagent_workflows import MultiAgentWorkflowRunner
+from research_pilot.workflows.paper_workflows import PaperWorkflowRunner
 
 app = typer.Typer(help="ResearchPilot command line interface.")
 console = Console()

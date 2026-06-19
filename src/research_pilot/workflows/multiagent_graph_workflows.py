@@ -25,6 +25,7 @@ from research_pilot.multiagent.subagents import (
 from research_pilot.workflows.code_workflows import CodeWorkflowRunner
 from research_pilot.workflows.paper_workflows import PaperWorkflowRunner
 from research_pilot.core.agent_loop import AgentLoop
+from research_pilot.graph.policy import RetryPolicy
 
 class MultiAgentGraphWorkflowRunner:
     """Graph-based multi-agent workflow runner.
@@ -49,7 +50,7 @@ class MultiAgentGraphWorkflowRunner:
         llm_client: OpenAICompatibleLLMClient,
         general_agent_loop: AgentLoop | None = None,
         console: Console | None = None,
-        max_specialist_retries: int = 1,
+        retry_policy: RetryPolicy | None = None,
         max_graph_steps: int = 20,
     ):
         self.code_workflow_runner = code_workflow_runner
@@ -57,7 +58,7 @@ class MultiAgentGraphWorkflowRunner:
         self.llm_client = llm_client
         self.console = console or Console()
 
-        self.max_specialist_retries = max_specialist_retries
+        self.retry_policy = retry_policy or RetryPolicy()
         self.max_graph_steps = max_graph_steps
 
         self.planner = PlannerSubAgent(llm_client=self.llm_client)
@@ -87,6 +88,15 @@ class MultiAgentGraphWorkflowRunner:
                 "retry_count": 0,
             },
         )
+
+        # Generate Mermaid diagram for traceability
+        try:
+            mermaid = graph.render_mermaid(graph_state)
+            self.console.print("[dim]Graph execution path (Mermaid):[/dim]")
+            self.console.print(mermaid)
+            state.metadata["graph_mermaid"] = mermaid
+        except Exception:
+            pass
 
         state = AgentState(user_goal=user_request)
         state.final_answer = graph_state.final_answer
@@ -136,6 +146,17 @@ class MultiAgentGraphWorkflowRunner:
         graph.add_node(FunctionGraphNode("code", self._code_node))
         graph.add_node(FunctionGraphNode("paper", self._paper_node))
         graph.add_node(FunctionGraphNode("general", self._general_node))
+
+        # Parallel group: run code and paper specialists together
+        graph.add_parallel_group(
+            name="code_and_paper",
+            sub_nodes=[
+                FunctionGraphNode("code", self._code_node),
+                FunctionGraphNode("paper", self._paper_node),
+            ],
+            description="Parallel: code and paper sub-agents",
+        )
+        graph.add_edge("code_and_paper", "reviewer")
         graph.add_node(FunctionGraphNode("reviewer", self._reviewer_node))
         graph.add_node(FunctionGraphNode("retry", self._retry_node))
         graph.add_node(FunctionGraphNode("writer", self._writer_node))
@@ -446,6 +467,9 @@ class MultiAgentGraphWorkflowRunner:
         if next_agent == "paper":
             return "paper"
 
+        if next_agent == "both":
+            return "code_and_paper"
+
         # If no specialist is selected, do not stop directly.
         # Route to the general fallback agent so open-ended questions can still be answered.
         return "general"
@@ -464,12 +488,14 @@ class MultiAgentGraphWorkflowRunner:
         retry_count = int(state.metadata.get("retry_count", 0))
 
         if (
-            source_agent in {"code", "paper"}
-            and retry_count < self.max_specialist_retries
+            source_agent in self.retry_policy.allowed_retry_agents
+            and retry_count < self.retry_policy.max_retries
         ):
             return "retry"
 
-        return "writer"
+        if self.retry_policy.fallback_to_writer:
+            return "writer"
+        return "final"
 
     def _route_after_retry(
         self,

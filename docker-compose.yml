@@ -1,0 +1,10 @@
+﻿version: "3.9"
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    command: uvicorn research_pilot.api.server:app --host 0.0.0.0
+    env_file:
+      - .env

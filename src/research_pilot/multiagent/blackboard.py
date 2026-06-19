@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from research_pilot.conversation.session import ConversationSession
 from research_pilot.core.evidence import EvidenceItem
 from research_pilot.core.state import AgentState
+from typing import Any
 
 
 class BlackboardNote(BaseModel):
@@ -50,6 +51,8 @@ class ResearchPilotBlackboard(BaseModel):
 
     notes: list[BlackboardNote] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    memory_store: Any | None = None
 
     @classmethod
     def from_session(
@@ -135,8 +138,18 @@ class ResearchPilotBlackboard(BaseModel):
 
         self._dedupe_all()
 
-    def compact_context(self) -> str:
-        """Render a compact text context for subagents."""
+
+    def compact_context(self, for_subagent: str | None = None) -> str:
+        """Render a compact text context for subagents.
+
+        Args:
+            for_subagent: If set, filters context to only what is relevant
+                          for that subagent. Supported values:
+                          "code" - shows code files, hides paper evidence
+                          "paper" - shows paper evidence, hides code files
+                          "planner" - shows notes and session, hides code/paper evidence
+                          "general" or None - shows everything
+        """
 
         sections: list[str] = []
 
@@ -145,19 +158,24 @@ class ResearchPilotBlackboard(BaseModel):
         if self.session_summary.strip():
             sections.append(f"Session summary:\n{self.session_summary.strip()}")
 
-        if self.code_files:
+        # Determine what to show based on subagent scope
+        show_code = for_subagent in (None, "general", "code")
+        show_paper = for_subagent in (None, "general", "paper")
+        show_notes = True  # notes are always visible
+
+        if show_code and self.code_files:
             sections.append(
                 "Code files:\n"
                 + "\n".join(f"- {file}" for file in self.code_files[:20])
             )
 
-        if self.code_search_queries:
+        if show_code and self.code_search_queries:
             sections.append(
                 "Code search queries:\n"
                 + "\n".join(f"- {query}" for query in self.code_search_queries[:20])
             )
 
-        if self.evidence_sources:
+        if show_paper and self.evidence_sources:
             sections.append(
                 "Evidence sources:\n"
                 + "\n".join(f"- {source}" for source in self.evidence_sources[:30])
@@ -169,14 +187,19 @@ class ResearchPilotBlackboard(BaseModel):
                 + "\n".join(f"- {path}" for path in self.report_paths[:20])
             )
 
-        if self.notes:
+        if show_notes and self.notes:
             note_lines = []
             for note in self.notes[-10:]:
                 note_lines.append(f"- {note.author}: {note.content}")
             sections.append("Subagent notes:\n" + "\n".join(note_lines))
 
-        return "\n\n---\n\n".join(sections)
+        # Inject long-term memories if available
+        if self.memory_store is not None:
+            memory_context = self.memory_store.format_for_context(top_k=5, filter_tags=None)
+            if memory_context.strip():
+                sections.append(memory_context)
 
+        return "\n\n---\n\n".join(sections)
     def _add_evidence_item(self, item: EvidenceItem) -> None:
         source = getattr(item, "source", "")
         content = getattr(item, "content", "")
