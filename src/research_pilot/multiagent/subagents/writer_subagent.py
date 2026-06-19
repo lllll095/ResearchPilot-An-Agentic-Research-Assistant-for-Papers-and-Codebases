@@ -35,7 +35,7 @@ class WriterSubAgent(BaseSubAgent):
         try:
             rewritten = self._rewrite(
                 user_request=blackboard.user_request,
-                blackboard_context=blackboard.compact_context(),
+                blackboard_context=blackboard.compact_context(for_subagent="general"),
                 candidate_answer=candidate_answer,
                 review_result=review_result,
                 source_agent=source_agent,

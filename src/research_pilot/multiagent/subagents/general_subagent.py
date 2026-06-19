@@ -88,7 +88,7 @@ class GeneralSubAgent(BaseSubAgent):
             try:
                 answer = self._direct_llm_answer(
                     user_request=user_request,
-                    blackboard_context=blackboard.compact_context(),
+                    blackboard_context=blackboard.compact_context(for_subagent="general"),
                 )
 
                 blackboard.add_note(

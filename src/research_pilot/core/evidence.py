@@ -48,6 +48,13 @@ class EvidenceStore(BaseModel):
             lines.append(f"Evidence {idx}:")
             lines.append(f"- type: {item.evidence_type}")
             lines.append(f"- source: {item.source}")
+
+            # Show structured data keys if present
+            data = item.metadata.get("data")
+            if isinstance(data, dict) and data:
+                data_keys = ", ".join(data.keys())
+                lines.append(f"- structured_data: {{{data_keys}}}")
+
             lines.append(f"- content:")
             lines.append(content)
             lines.append("")

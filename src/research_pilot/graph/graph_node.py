@@ -43,6 +43,47 @@ class BaseGraphNode(ABC):
         """Run this node against the shared graph state."""
 
 
+
+class ParallelGroupNode(BaseGraphNode):
+    "Run multiple sub-nodes and merge results. Can be upgraded to true parallelism."
+
+    def __init__(self, name: str, sub_nodes: list[BaseGraphNode], description: str = ""):
+        self.name = name
+        self.sub_nodes = sub_nodes
+        self.description = description or "Parallel group: " + name
+
+    def run(self, state: GraphState) -> GraphNodeResult:
+        merged = GraphNodeResult(success=True)
+        merged.updates["parallel_node_results"] = {}
+
+        for node in self.sub_nodes:
+            result = node.run(state)
+
+            if not result.success:
+                merged.success = False
+                merged.error = node.name + ": " + (result.error or "unknown error")
+
+            merged.updates.update(result.updates)
+            merged.updates["parallel_node_results"][node.name] = {
+                "success": result.success,
+                "output_preview": result.output_preview[:500],
+                "error": result.error,
+            }
+
+            merged.metadata[node.name] = result.output_preview[:300]
+
+            if result.final_answer:
+                merged.final_answer = (merged.final_answer + chr(10)*2 + result.final_answer).strip()
+
+
+
+        merged.output_preview = (
+            "Parallel group ran " + str(len(self.sub_nodes)) + " nodes. "
+            + "Success: " + str(merged.success)
+        )
+        return merged
+
+
 class FunctionGraphNode(BaseGraphNode):
     """Wrap a normal Python function as a graph node."""
 

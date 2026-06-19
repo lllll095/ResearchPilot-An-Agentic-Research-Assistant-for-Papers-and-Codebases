@@ -183,6 +183,51 @@ class CodeMapTool(BaseTool):
             )
 
 
+
+
+def _search_with_rg(
+    query: str,
+    root: Path,
+    max_results: int = 30,
+    context_lines: int = 2,
+) -> list[dict[str, Any]] | None:
+    """Fast code search using ripgrep (rg).
+
+    Returns a list of match dicts, or None if rg is not available.
+    Falls back to Python-based search when rg is unavailable.
+    """
+    import json as _json
+    import subprocess as _sp
+
+    try:
+        result = _sp.run(
+            ["rg", "-n", "--json", "-C", str(context_lines), "-m", str(max_results), query, str(root)],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode not in (0, 1):
+            return None
+        if not result.stdout.strip():
+            return []
+
+        matches: list[dict[str, Any]] = []
+        for line in result.stdout.strip().split("\n"):
+            try:
+                data = _json.loads(line)
+                if data.get("type") == "match":
+                    md = data.get("data", {})
+                    fpath = md.get("path", {}).get("text", "")
+                    matches.append({
+                        "file": fpath,
+                        "line_number": md.get("line_number", 0),
+                        "line": md.get("lines", {}).get("text", "").rstrip("\n"),
+                    })
+            except _json.JSONDecodeError:
+                continue
+        return matches[:max_results]
+    except (FileNotFoundError, _sp.TimeoutExpired, OSError):
+        return None
+
+
 class CodeSearchTool(BaseTool):
     """Search code files using simple keyword matching."""
 
@@ -208,10 +253,14 @@ class CodeSearchTool(BaseTool):
             root = _safe_resolve_repo_path(path)
             project_root = _project_root()
 
-            keywords = self._extract_keywords(query)
-            files = _iter_code_files(root)
+            # Try ripgrep first for fast search
+            matches = _search_with_rg(query, root, max_results, context_lines)
 
-            matches: list[dict[str, Any]] = []
+            # Fall back to Python-based search
+            if matches is None:
+                keywords = self._extract_keywords(query)
+                files = _iter_code_files(root)
+                matches = []
 
             for file_path in files:
                 text = _read_text_file(file_path)

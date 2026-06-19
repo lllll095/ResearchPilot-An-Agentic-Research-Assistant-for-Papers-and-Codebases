@@ -42,12 +42,19 @@ class GraphWorkflowRunner:
         self.default_edges: dict[str, str] = {}
         self.conditional_edges: dict[str, ConditionalRouter] = {}
 
-    def add_node(self, node: BaseGraphNode) -> None:
-        """Register a graph node."""
+    def add_parallel_group(
+        self, name: str, sub_nodes: list, description: str = "",
+    ) -> None:
+        "Add a node that runs sub-nodes and merges results."
+        from research_pilot.graph.graph_node import ParallelGroupNode
+        node = ParallelGroupNode(name=name, sub_nodes=sub_nodes,
+                             description=description or "Parallel: " + name)
+        self.nodes[node.name] = node
 
+    def add_node(self, node) -> None:
+        "Register a graph node."
         if not node.name:
             raise ValueError("Graph node name cannot be empty.")
-
         self.nodes[node.name] = node
 
     def add_edge(self, from_node: str, to_node: str) -> None:
@@ -193,12 +200,57 @@ class GraphWorkflowRunner:
 
         router = self.conditional_edges.get(node_name)
         if router is not None:
-            return router(state, result)
+            routed = router(state, result)
+            if routed is not None:
+                return routed
 
         if node_name in self.default_edges:
             return self.default_edges[node_name]
 
         return None
+
+
+    def render_mermaid(self, graph_state=None):
+        """Generate a Mermaid flowchart diagram of this graph structure."""
+        lines = ["flowchart TD"]
+        visited = set()
+        if graph_state is not None:
+            visited = set(getattr(graph_state, "visited_nodes", []))
+        for name, node in self.nodes.items():
+            br = name.replace("_", " ")
+            style = " visited" if name in visited else ""
+            safe_desc = node.description.replace("\"", "'")
+            lines.append(f"    {name}[\"{br}\"]{style}")
+        for from_node, to_node in self.default_edges.items():
+            lines.append(f"    {from_node} --> {to_node}")
+        for from_node in self.conditional_edges:
+            lines.append(f"    {from_node} -.-> |route| ROUTER")
+        if visited:
+            for name in visited:
+                if name in self.nodes:
+                    lines.append(f"    style {name} stroke:#00a,stroke-width:2px")
+        return "\n".join(lines)
+
+
+    def render_mermaid(self, graph_state=None):
+        """Generate a Mermaid flowchart diagram of this graph structure."""
+        lines = ["flowchart TD"]
+        visited = set()
+        if graph_state is not None:
+            visited = set(getattr(graph_state, "visited_nodes", []))
+        for name, node in self.nodes.items():
+            br = name.replace("_", " ")
+            style = " visited" if name in visited else ""
+            lines.append(f"    {name}[\"{br}\"]{style}")
+        for from_node, to_node in self.default_edges.items():
+            lines.append(f"    {from_node} --> {to_node}")
+        for from_node in self.conditional_edges:
+            lines.append(f"    {from_node} -.-> |route| ROUTER")
+        if visited:
+            for name in visited:
+                if name in self.nodes:
+                    lines.append(f"    style {name} stroke:#00a,stroke-width:2px")
+        return "\n".join(lines)
 
     @staticmethod
     def _apply_updates(

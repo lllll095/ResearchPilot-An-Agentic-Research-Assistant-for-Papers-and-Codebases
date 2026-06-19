@@ -86,6 +86,35 @@ class OpenAICompatibleLLMClient:
             f"Last error: {repr(last_error)}"
         )
 
+
+    def stream(self, messages: list[dict[str, Any]]):
+        """Stream chat completion response token by token.
+
+        Yields content tokens as they arrive from the LLM API.
+        This is useful for real-time display in UI or CLI.
+
+        Yields:
+            str: Content tokens from the LLM response.
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature,
+                stream=True,
+                stream_options={"include_usage": False},
+            )
+
+            for chunk in response:
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                if delta and delta.content:
+                    yield delta.content
+
+        except Exception as exc:
+            yield f"[Stream error: {type(exc).__name__}: {exc}]"
+
     @staticmethod
     def _backoff_seconds(attempt: int) -> int:
         """Exponential backoff with a small upper bound."""

@@ -42,4 +42,30 @@ class ToolRuntime:
                 metadata={"available_tools": self.list_tools()},
             )
 
-        return tool.run(action.tool_input, state=state)
+        spec = tool.spec()
+
+        # Validate input against schema
+        if spec.input_schema:
+            error = spec.validate_input(action.tool_input)
+            if error is not None:
+                return Observation(
+                    success=False,
+                    content=f"Input validation failed for '{action.tool_name}': {error}",
+                    error="InputValidationError",
+                    metadata={"tool": action.tool_name, "validation_error": error},
+                )
+
+        result = tool.run(action.tool_input, state=state)
+
+        # Validate output data against schema
+        if result.success and result.data is not None and spec.output_schema:
+            error = spec.validate_output_data(result.data)
+            if error is not None:
+                return Observation(
+                    success=False,
+                    content=f"Output validation failed for '{action.tool_name}': {error}",
+                    error="OutputValidationError",
+                    metadata={"tool": action.tool_name, "validation_error": error},
+                )
+
+        return result

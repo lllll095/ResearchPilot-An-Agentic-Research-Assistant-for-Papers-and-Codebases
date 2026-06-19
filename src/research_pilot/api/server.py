@@ -1,7 +1,9 @@
 from functools import lru_cache
 from typing import Any
 
+import json
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 
 from research_pilot.api.schemas import (
     ChatRequest,
@@ -27,6 +29,13 @@ app = FastAPI(
     ),
     version="0.1.0",
 )
+
+
+@lru_cache(maxsize=1)
+def get_llm_client():
+    """Build and cache an LLM client for direct streaming."""
+    from research_pilot.core.llm_client import OpenAICompatibleLLMClient
+    return OpenAICompatibleLLMClient.from_settings()
 
 
 @lru_cache(maxsize=1)
@@ -116,6 +125,47 @@ def chat(request: ChatRequest) -> ChatResponse:
             detail=f"{type(exc).__name__}: {exc}",
         ) from exc
 
+
+
+@app.post("/chat/direct")
+def chat_direct(request: ChatRequest) -> StreamingResponse:
+    """Direct LLM chat with streaming response via Server-Sent Events.
+
+    This endpoint bypasses the multi-agent workflow and calls the LLM directly,
+    streaming each token as a SSE event. Unlike /chat, this endpoint does not
+    use tools, workflows, or agent orchestration.
+
+    SSE event format:
+        data: {"token": "hello"}
+        data: {"token": " world"}
+        data: {"done": true}
+
+    Useful for:
+    - Testing LLM connectivity.
+    - Building streaming chat UIs.
+    - Demonstrating the streaming capability.
+    """
+
+    if not request.message.strip():
+        raise HTTPException(status_code=400, detail="message cannot be empty")
+
+    llm_client = get_llm_client()
+    messages = [{"role": "user", "content": request.message}]
+
+    def event_stream():
+        for token in llm_client.stream(messages):
+            yield f"data: {json.dumps({'token': token})}\n\n"
+        yield f"data: {json.dumps({'done': True})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 @app.post("/paper-research", response_model=PaperResearchResponse)
 def paper_research(request: PaperResearchRequest) -> PaperResearchResponse:

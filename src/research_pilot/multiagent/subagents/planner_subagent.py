@@ -24,7 +24,7 @@ class PlannerDecision(BaseModel):
     )
     next_agent: str = Field(
         description=(
-            "Next subagent to run. Supported values: code, paper, none."
+            "Next subagent to run. Supported values: code, paper, both, none."
         )
     )
     reason: str = Field(
@@ -105,7 +105,7 @@ class PlannerSubAgent(BaseSubAgent):
 
     def _plan(self, agent_input: SubAgentInput) -> PlannerDecision:
         blackboard = agent_input.blackboard
-        context = blackboard.compact_context()
+        context = blackboard.compact_context(for_subagent="planner")
 
         messages = [
             {
@@ -170,7 +170,7 @@ JSON schema:
 
 {
   "task_type": "code_answer | paper_answer | paper_research | general",
-  "next_agent": "code | paper | none",
+  "next_agent": "code | paper | both | none",
   "reason": "short reason",
   "rewritten_request": "optional rewritten request"
 }
@@ -214,7 +214,7 @@ Rules:
             "paper_research",
             "general",
         }
-        allowed_next_agents = {"code", "paper", "none"}
+        allowed_next_agents = {"code", "paper", "both", "none"}
 
         if task_type not in allowed_task_types:
             task_type = "general"
