@@ -1,6 +1,6 @@
 # ResearchPilot：图工作流驱动的多智能体研究助手
 
-[![Test](https://github.com/lllll095/ResearchPilot-An-Agentic-Research-Assistant-for-Papers-and-Codebases/actions/workflows/test.yml/badge.svg)](https://github.com/lllll095/ResearchPilot-An-Agentic-Research-Assistant-for-Papers-and-Codebases/actions/workflows/test.yml)
+[![Test](https://github.com/lllll095/ResearchPilot/actions/workflows/test.yml/badge.svg)](https://github.com/lllll095/ResearchPilot/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ResearchPilot 是一个面向代码理解、论文研究、证据生成和多轮对话的 Agent Engineering 项目。
@@ -103,7 +103,7 @@ flowchart TD
 ## 快速开始
 
 ```bash
-git clone https://github.com/lllll095/ResearchPilot-An-Agentic-Research-Assistant-for-Papers-and-Codebases.git
+git clone https://github.com/lllll095/ResearchPilot.git
 cd ResearchPilot
 pip install -e ".[dev]"
 

@@ -1,6 +1,6 @@
 # ResearchPilot
 
-[![Test](https://github.com/lllll095/ResearchPilot-An-Agentic-Research-Assistant-for-Papers-and-Codebases/actions/workflows/test.yml/badge.svg)](https://github.com/lllll095/ResearchPilot-An-Agentic-Research-Assistant-for-Papers-and-Codebases/actions/workflows/test.yml)
+[![Test](https://github.com/lllll095/ResearchPilot/actions/workflows/test.yml/badge.svg)](https://github.com/lllll095/ResearchPilot/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
 
@@ -92,7 +92,7 @@ flowchart TD
 
 ```bash
 # Clone and install
-git clone https://github.com/lllll095/ResearchPilot-An-Agentic-Research-Assistant-for-Papers-and-Codebases.git
+git clone https://github.com/lllll095/ResearchPilot.git
 cd ResearchPilot
 pip install -e ".[dev]"
 
