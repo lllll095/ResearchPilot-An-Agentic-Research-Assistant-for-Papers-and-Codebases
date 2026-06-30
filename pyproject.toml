@@ -1,10 +1,11 @@
-[project]
+﻿[project]
 name = "research-pilot"
 version = "0.1.0"
 description = "A lightweight Claude Code-like agent harness for deep research, paper RAG, and codebase understanding."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "streamlit>=1.35.0",
     "openai>=1.12.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
@@ -46,3 +47,4 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
